@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 
 use anyhow::{Error, Result};
 use colored::{Color, Colorize};
 use futures::stream;
-use futures::stream::{FuturesUnordered, StreamExt};
+use futures::stream::StreamExt;
 use tokio::sync::RwLock;
 
 pub static TASKS_MANAGER: LazyLock<TaskManager> = LazyLock::new(|| TaskManager::default());
@@ -40,7 +40,7 @@ impl BotTask {
 
 #[derive(Default, Debug)]
 pub struct TaskManager {
-    pub tasks: RwLock<FuturesUnordered<BotTask>>,
+    pub tasks: RwLock<Vec<BotTask>>,
 }
 
 impl TaskManager {
@@ -61,7 +61,7 @@ impl TaskManager {
         }
     }
 
-    pub async fn runn_tasks(&self) {
+    pub async fn run_tasks(&self) {
         let tasks = &*self.tasks.read().await;
         let futures_stream = stream::iter(tasks);
         futures_stream

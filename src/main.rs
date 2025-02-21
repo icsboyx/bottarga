@@ -24,6 +24,8 @@ async fn main() {
         )
         .await;
 
+    println!("####################\n{:?}####################\n", TASKS_MANAGER.tasks);
+
     TASKS_MANAGER.list().await;
-    TASKS_MANAGER.runn_tasks().await;
+    TASKS_MANAGER.run_tasks().await;
 }
