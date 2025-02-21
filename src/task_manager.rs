@@ -16,19 +16,19 @@ type BotTaskType = fn() -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send
 #[derive(Debug)]
 pub struct BotTask {
     name: String,
-    function: Arc<RwLock<BotTaskType>>,
-    max_restarts: Arc<RwLock<i32>>,
-    restart_status: Arc<RwLock<i32>>,
+    function: RwLock<BotTaskType>,
+    max_restarts: RwLock<i32>,
+    restart_status: RwLock<i32>,
     color: Color,
 }
 
 impl BotTask {
     pub fn new(name: impl AsRef<str>, task: BotTaskType, max_restarts: i32, color: Color) -> Self {
         Self {
-            max_restarts: Arc::new(RwLock::new(max_restarts)),
+            max_restarts: RwLock::new(max_restarts),
             name: name.as_ref().into(),
-            function: Arc::new(RwLock::new(task)),
-            restart_status: Arc::new(RwLock::new(0)),
+            function: RwLock::new(task),
+            restart_status: RwLock::new(0),
             color,
         }
     }
