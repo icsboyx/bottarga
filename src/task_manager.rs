@@ -80,7 +80,7 @@ impl TaskManager {
             .await
     }
 
-    // pub async fn runn_tasks(&self) {
+    // pub async fn run_tasks(&self) {
     //     let futures_stream = stream::iter(&self.tasks);
     //     futures_stream
     //         .for_each_concurrent(None, |task| async move {
@@ -104,28 +104,3 @@ impl TaskManager {
         }
     }
 }
-
-// #[derive(Default)]
-// pub struct Tasksmanager {
-//     pub tasks: Vec<BotTask>,
-// }
-
-// impl Tasksmanager {
-//     pub fn add_task(&mut self, task: BotTask) {
-//         self.tasks.push(task);
-//     }
-
-//     pub async fn runn_tasks(self) -> Vec<JoinHandle<Result<(), Error>>> {
-//         let mut jh = vec![];
-//         for task in self.tasks {
-//             jh.push(tokio::spawn(async move { task.function.await }));
-//         }
-//         jh
-//     }
-
-//     pub fn list(&self) {
-//         for task in self.tasks.iter() {
-//             println!("{:}", task.name)
-//         }
-//     }
-// }
