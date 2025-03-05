@@ -14,7 +14,7 @@ use futures::{pin_mut, stream};
 use tokio::sync::RwLock;
 
 pub static TASKS_MANAGER: LazyLock<TaskManager> = LazyLock::new(|| TaskManager::default());
-static TASK_MONITOR_TIME: u64 = 10;
+static TASK_MONITOR_TIME: u64 = 60;
 
 // type BotTaskType = dyn Fn() -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
 
