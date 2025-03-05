@@ -1,34 +1,67 @@
+use core::task;
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::LazyLock;
+use std::time::Duration;
 
 use anyhow::{Error, Result};
-use colored::{Color, Colorize};
-use futures::stream;
+use colored::Color;
+use colored::Color::Blue;
+use futures::executor::block_on;
 use futures::stream::StreamExt;
+use futures::{pin_mut, stream};
 use tokio::sync::RwLock;
 
 pub static TASKS_MANAGER: LazyLock<TaskManager> = LazyLock::new(|| TaskManager::default());
+static TASK_MONITOR_TIME: u64 = 10;
 
 // type BotTaskType = dyn Fn() -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
-type BotTaskType = fn() -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
 
+#[derive(Debug, Default, Clone)]
+pub struct BotTaskStatus {
+    max_restarts: i32,
+    restart_status: i32,
+    is_alive: bool,
+}
+
+impl BotTaskStatus {
+    pub async fn set_max_restarts(&mut self, max_restarts: i32) {
+        self.max_restarts = max_restarts;
+    }
+
+    pub async fn set_restart_status(&mut self, restart_status: i32) {
+        self.restart_status = restart_status;
+    }
+
+    pub async fn get_stats(&self) -> BotTaskStatus {
+        self.clone()
+    }
+
+    pub fn is_alive(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
+type BotTaskType = fn() -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
 #[derive(Debug)]
 pub struct BotTask {
     name: String,
     function: RwLock<BotTaskType>,
-    max_restarts: RwLock<i32>,
-    restart_status: RwLock<i32>,
-    color: Color,
+    task_status: RwLock<BotTaskStatus>,
+    color: Option<Color>,
 }
 
 impl BotTask {
-    pub fn new(name: impl AsRef<str>, task: BotTaskType, max_restarts: i32, color: Color) -> Self {
+    pub fn new(name: impl AsRef<str>, task: BotTaskType, max_restarts: i32, color: Option<Color>) -> Self {
         Self {
-            max_restarts: RwLock::new(max_restarts),
             name: name.as_ref().into(),
             function: RwLock::new(task),
-            restart_status: RwLock::new(0),
+            task_status: RwLock::new(BotTaskStatus {
+                max_restarts,
+                restart_status: 0,
+                is_alive: false,
+            }),
             color,
         }
     }
@@ -38,17 +71,33 @@ impl BotTask {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct TaskManager {
     pub tasks: RwLock<Vec<BotTask>>,
 }
 
+impl Default for TaskManager {
+    fn default() -> Self {
+        Self {
+            tasks: RwLock::new(vec![BotTask {
+                name: "TaskMonitor".into(),
+                function: RwLock::new(|| Box::pin(task_monitor())),
+                task_status: RwLock::new(BotTaskStatus {
+                    max_restarts: -1,
+                    restart_status: 0,
+                    is_alive: false,
+                }),
+                color: Some(Blue),
+            }]),
+        }
+    }
+}
 impl TaskManager {
     pub async fn add_task(&self, task: BotTask) {
         self.tasks.write().await.push(task);
     }
 
-    pub async fn add(&self, name: impl AsRef<str>, task: BotTaskType, max_restarts: i32, color: Color) {
+    pub async fn add(&self, name: impl AsRef<str>, task: BotTaskType, max_restarts: i32, color: Option<Color>) {
         self.tasks
             .write()
             .await
@@ -66,41 +115,44 @@ impl TaskManager {
         let futures_stream = stream::iter(tasks);
         futures_stream
             .for_each_concurrent(None, |task| async move {
-                while *task.max_restarts.read().await >= *task.restart_status.read().await {
-                    if *task.restart_status.read().await > 0 {
-                        println!("RESTARTING {}", format!("{:#?}", &task).color(task.color));
+                while task.task_status.read().await.max_restarts == -1
+                    || task.task_status.read().await.max_restarts >= task.task_status.read().await.restart_status
+                {
+                    if task.task_status.read().await.restart_status > 0 {
+                        println!("RESTARTING {}", format!("{:#?}", &task));
                     } else {
-                        println!("STARTING {}", format!("{:#?}", &task).color(task.color));
+                        println!("STARTING {}", format!("{:#?}", &task));
                     }
                     let _ = task.run().await;
-                    println!("{}", format!("task {} terminated", &task.name).color(task.color));
-                    *task.restart_status.write().await += 1;
+                    task.task_status.write().await.restart_status += 1;
                 }
             })
             .await
     }
 
-    // pub async fn run_tasks(&self) {
-    //     let futures_stream = stream::iter(&self.tasks);
-    //     futures_stream
-    //         .for_each_concurrent(None, |task| async move {
-    //             while *task.max_restarts.read().await >= *task.restart_status.read().await {
-    //                 if *task.restart_status.read().await > 0 {
-    //                     println!("RESTARTING {}", format!("{:#?}", &task).color(task.color));
-    //                 } else {
-    //                     println!("STARTING {}", format!("{:#?}", &task).color(task.color));
-    //                 }
-    //                 let _ = task.run().await;
-    //                 println!("{}", format!("task {} terminated", &task.name).color(task.color));
-    //                 *task.restart_status.write().await += 1;
-    //             }
-    //         })
-    //         .await
-    // }
+    pub async fn get_stats(&self) -> Vec<BotTaskStatus> {
+        self.tasks
+            .read()
+            .await
+            .iter()
+            .map(|task| block_on(task.task_status.read()).clone())
+            .collect::<Vec<BotTaskStatus>>()
+    }
+}
+// Monitoring Task for all tasks helper async function to load as default
+async fn task_monitor() -> Result<()> {
+    let task_monitor_tick = tokio::time::interval(Duration::from_secs(TASK_MONITOR_TIME));
+    pin_mut!(task_monitor_tick);
 
-    pub async fn print_stats(&self) {
-        for task in self.tasks.read().await.iter() {
-            println!("{}", format!("{:?}", task).color(task.color))
+    loop {
+        tokio::select! {
+            _ = task_monitor_tick.tick() => {
+                for task in TASKS_MANAGER.get_stats().await{
+                    log!("{:?}", task)
+                } ;
+            }
         }
     }
+
+    Ok(())
 }

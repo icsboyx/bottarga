@@ -4,8 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+colored = { version = "3.0.0" }
 anyhow = "1.0.96"
-colored = "3.0.0"
 futures = "0.3.31"
-tokio = { version = "1.43.0", features = ["rt-multi-thread", "macros", "tokio-macros", "sync", "time"] }
-tokio-tungstenite = { version = "0.26.2", features = ["tokio-native-tls"] }
+tokio = { version = "1.43.0", features = ["rt-multi-thread", "macros", "tokio-macros", "sync", "time", "fs"] }
+tokio-tungstenite = { version = "0.26.2", features = ["native-tls", "tokio-native-tls"] }
+serde = { version = "1.0.218", features = ["derive"] }
+toml = "0.8.20"
+tokio-stream = "0.1.17"

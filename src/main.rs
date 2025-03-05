@@ -1,31 +1,30 @@
+use anyhow::Result;
 use task_manager::TASKS_MANAGER;
-
-pub mod task01;
-pub mod task02;
+pub mod defs;
+#[macro_use]
+pub mod macros;
+pub mod irc_parser;
 pub mod task_manager;
 pub mod task_stats;
+pub mod twitch_client;
 
+pub static CONFIG_DIR: Option<&'static str> = Some(".config");
+
+use colored::Color::*;
 #[tokio::main]
-async fn main() {
+
+async fn main() -> Result<()> {
     // let mut task_manager = TaskManager::default();
-    TASKS_MANAGER
-        .add("Task01", || Box::pin(task01::start()), 3, colored::Color::Blue)
-        .await;
-    TASKS_MANAGER
-        .add("Task02", || Box::pin(task02::start()), 2, colored::Color::Green)
-        .await;
+
+    log_debug!("{:?}", TASKS_MANAGER);
 
     TASKS_MANAGER
-        .add(
-            "Monitor task",
-            || Box::pin(task_stats::start()),
-            10,
-            colored::Color::Red,
-        )
+        .add("Task01", || Box::pin(twitch_client::start()), 3, Some(Blue))
         .await;
 
-    println!("####################\n{:?}####################\n", TASKS_MANAGER.tasks);
+    log_debug!("{:?}", TASKS_MANAGER);
 
     TASKS_MANAGER.list().await;
     TASKS_MANAGER.run_tasks().await;
+    Ok(())
 }
