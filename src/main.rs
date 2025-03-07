@@ -1,4 +1,5 @@
 use anyhow::Result;
+use colored::Colorize;
 use task_manager::TASKS_MANAGER;
 pub mod defs;
 #[macro_use]
@@ -10,7 +11,6 @@ pub mod twitch_client;
 
 pub static CONFIG_DIR: Option<&'static str> = Some(".config");
 
-use colored::Color::*;
 #[tokio::main]
 
 async fn main() -> Result<()> {
@@ -19,12 +19,13 @@ async fn main() -> Result<()> {
     log_debug!("{:?}", TASKS_MANAGER);
 
     TASKS_MANAGER
-        .add("Task01", || Box::pin(twitch_client::start()), 3, Some(Blue))
+        .add("Task01", || Box::pin(twitch_client::start()), 3)
         .await;
 
     log_debug!("{:?}", TASKS_MANAGER);
 
     TASKS_MANAGER.list().await;
     TASKS_MANAGER.run_tasks().await;
+
     Ok(())
 }

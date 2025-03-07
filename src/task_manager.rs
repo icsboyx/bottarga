@@ -1,13 +1,9 @@
-use core::task;
 use std::fmt::Debug;
-use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::LazyLock;
 use std::time::Duration;
 
 use anyhow::{Error, Result};
-use colored::Color;
-use colored::Color::Blue;
 use futures::executor::block_on;
 use futures::stream::StreamExt;
 use futures::{pin_mut, stream};
@@ -39,7 +35,14 @@ impl BotTaskStatus {
     }
 
     pub fn is_alive(&self) -> Result<()> {
+        let _ = self.is_alive;
         Ok(())
+    }
+}
+
+impl std::fmt::Display for BotTaskStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -49,11 +52,10 @@ pub struct BotTask {
     name: String,
     function: RwLock<BotTaskType>,
     task_status: RwLock<BotTaskStatus>,
-    color: Option<Color>,
 }
 
 impl BotTask {
-    pub fn new(name: impl AsRef<str>, task: BotTaskType, max_restarts: i32, color: Option<Color>) -> Self {
+    pub fn new(name: impl AsRef<str>, task: BotTaskType, max_restarts: i32) -> Self {
         Self {
             name: name.as_ref().into(),
             function: RwLock::new(task),
@@ -62,7 +64,6 @@ impl BotTask {
                 restart_status: 0,
                 is_alive: false,
             }),
-            color,
         }
     }
 
@@ -87,26 +88,29 @@ impl Default for TaskManager {
                     restart_status: 0,
                     is_alive: false,
                 }),
-                color: Some(Blue),
             }]),
         }
     }
 }
+
+impl std::fmt::Display for TaskManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.tasks)
+    }
+}
+
 impl TaskManager {
     pub async fn add_task(&self, task: BotTask) {
         self.tasks.write().await.push(task);
     }
 
-    pub async fn add(&self, name: impl AsRef<str>, task: BotTaskType, max_restarts: i32, color: Option<Color>) {
-        self.tasks
-            .write()
-            .await
-            .push(BotTask::new(name, task, max_restarts, color));
+    pub async fn add(&self, name: impl AsRef<str>, task: BotTaskType, max_restarts: i32) {
+        self.tasks.write().await.push(BotTask::new(name, task, max_restarts));
     }
 
     pub async fn list(&self) {
         for task in self.tasks.read().await.iter() {
-            println!("{:?}", &task.name)
+            log!("{}", &task.name)
         }
     }
 
@@ -119,9 +123,9 @@ impl TaskManager {
                     || task.task_status.read().await.max_restarts >= task.task_status.read().await.restart_status
                 {
                     if task.task_status.read().await.restart_status > 0 {
-                        println!("RESTARTING {}", format!("{:#?}", &task));
+                        log_warning!("RESTARTING {}", format!("{:?}", &task));
                     } else {
-                        println!("STARTING {}", format!("{:#?}", &task));
+                        log_warning!("STARTING {}", format!("{:?}", &task));
                     }
                     let _ = task.run().await;
                     task.task_status.write().await.restart_status += 1;
@@ -148,11 +152,9 @@ async fn task_monitor() -> Result<()> {
         tokio::select! {
             _ = task_monitor_tick.tick() => {
                 for task in TASKS_MANAGER.get_stats().await{
-                    log!("{:?}", task)
+                    log!("{}", task)
                 } ;
             }
         }
     }
-
-    Ok(())
 }

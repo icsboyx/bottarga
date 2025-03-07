@@ -50,6 +50,26 @@ macro_rules! here {
 macro_rules! log_write {
     ($color:expr) => {{
         use colored::Colorize;
+        let prefix = now!();
+        let payload = format!("{} I'm here", here!());
+        let padding = format!("{}{}","\n"," ".repeat(prefix.len() + 5));
+        let payload = payload.replace("\n", padding.as_ref());
+        println!("| {} | {}", prefix, payload.color($color));
+    }};
+    ($color:expr,$($arg:tt)*) => {{
+        use colored::Colorize;
+        let prefix = now!();
+        let payload = format!($($arg)*);
+        let padding = format!("{}{}","\n"," ".repeat(prefix.len() + 5));
+        let payload = payload.replace("\n", padding.as_ref());
+        println!("| {} | {}", prefix, payload.color($color));
+    }};
+}
+
+#[macro_export]
+macro_rules! log_write_original {
+    ($color:expr) => {{
+        use colored::Colorize;
         let payload = format!("{} I'm here" , here!());
         let prefix = now!();
         println!("| {} | {}", prefix, payload.color($color));
