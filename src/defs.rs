@@ -139,12 +139,12 @@ where
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug)]
 pub struct MSGQueue<T>
 where
     T: Sync + Send + Clone + Debug + 'static,
 {
-    queue: Arc<RwLock<VecDeque<T>>>,
+    queue: RwLock<VecDeque<T>>,
     notify: Arc<tokio::sync::Notify>,
 }
 
@@ -152,6 +152,13 @@ impl<T> MSGQueue<T>
 where
     T: Sync + Send + Clone + Debug + 'static,
 {
+    pub fn new() -> Self {
+        Self {
+            queue: RwLock::new(VecDeque::new()),
+            notify: Arc::new(tokio::sync::Notify::new()),
+        }
+    }
+
     pub async fn push_back(&self, payload: T) {
         self.queue.write().await.push_back(payload);
         self.notify.notify_waiters();

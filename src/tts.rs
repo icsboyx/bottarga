@@ -10,26 +10,46 @@ use regex::Regex;
 
 use crate::audio_player::TTS_AUDIO_QUEUE;
 use crate::defs::MSGQueue;
-use crate::twitch_client::TWITCH_BROADCAST;
+use crate::twitch_client::TWITCH_BOT_INFO;
 use crate::users::USER_DB;
 
 pub static TTS_VOCE_BD: LazyLock<VoiceDB> = LazyLock::new(|| VoiceDB::default());
-pub static TTS_QUEUE: LazyLock<MSGQueue<String>> = LazyLock::new(|| MSGQueue::default());
+pub static TTS_QUEUE: LazyLock<MSGQueue<TTSMassage>> = LazyLock::new(|| MSGQueue::new());
 static TRANSFORM_CHARS: &[(char, &str)] = &[('&', "and"), ('%', "percent")];
 
 pub async fn start() -> Result<()> {
-    let mut twitch_broadcast = TWITCH_BROADCAST.subscribe_broadcast().await;
-
     loop {
         tokio::select! {
 
-            Ok(message) = twitch_broadcast.recv() => {
-              text_to_speech(message.payload, USER_DB.write().await.get_user(message.sender).await.unwrap().get_speech_config()).await?;
-          }
+            // Ok(message) = twitch_broadcast.recv() => {
+            //     if !message.payload.starts_with(COMMAND_PREFIX) {
+            //   text_to_speech(message.payload, USER_DB.write().await.get_user(message.sender).await.unwrap().get_speech_config()).await?;
+            //     }}
 
           Some(ret_val) = TTS_QUEUE.next() => {
-            text_to_speech(ret_val, USER_DB.write().await.get_user("BOT").await.unwrap().get_speech_config()).await?;
+            text_to_speech(ret_val).await?;
           }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TTSMassage {
+    pub speech_config: SpeechConfig,
+    pub payload: String,
+}
+
+impl Default for TTSMassage {
+    fn default() -> Self {
+        Self {
+            speech_config: SpeechConfig {
+                voice_name: "".into(),
+                audio_format: "".into(),
+                pitch: 0,
+                rate: 0,
+                volume: 0,
+            },
+            payload: "".into(),
         }
     }
 }
@@ -52,7 +72,7 @@ impl VoiceDB {
         self.voice_list.iter().map(|v| &v.name).collect::<Vec<_>>()
     }
 
-    pub async fn filter_voices_by_text(&self, filter: &[&str]) -> Self {
+    pub fn filter_voices_by_text(&self, filter: &[&str]) -> Self {
         let voice_list = self
             .voice_list
             .iter()
@@ -139,11 +159,9 @@ impl VoiceDB {
         let index = rng.random_range(0..self.voice_list.len());
         &self.voice_list[index]
     }
-
-    pub fn as_speech_config(&self) {}
 }
-pub async fn text_to_speech(text: impl AsRef<str>, speech_config: &SpeechConfig) -> Result<()> {
-    let text = remove_url_in_text(text);
+pub async fn text_to_speech(message: TTSMassage) -> Result<()> {
+    let text = remove_url_in_text(message.payload);
     let text = text
         .chars()
         .map(|c| {
@@ -156,7 +174,7 @@ pub async fn text_to_speech(text: impl AsRef<str>, speech_config: &SpeechConfig)
         .collect::<String>();
 
     let mut tts = msedge_tts::tts::client::connect_async().await?;
-    let audio = tts.synthesize(text.as_ref(), speech_config).await?;
+    let audio = tts.synthesize(text.as_ref(), &message.speech_config).await?;
     if audio.audio_bytes.is_empty() {
         return Ok(());
     }
@@ -170,4 +188,16 @@ fn remove_url_in_text(text: impl AsRef<str>) -> String {
     // let url_regex = Regex::new(r"[a-zA-Z]+://[^\s]+").unwrap();
     let url_regex = Regex::new(r"(?:[a-zA-Z]+://|www\.|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)[^\s]+").unwrap();
     url_regex.replace_all(text.as_ref(), ", URL removed,").to_string()
+}
+
+pub async fn voice_msg(payload: &impl AsRef<str>, nick: &impl AsRef<str>) -> TTSMassage {
+    let speech_config = if nick.as_ref() != TWITCH_BOT_INFO.nick_name().await {
+        &USER_DB.write().await.get_user(nick).await.get_speech_config().clone()
+    } else {
+        TWITCH_BOT_INFO.speech_config().await
+    };
+    TTSMassage {
+        speech_config: speech_config.clone(),
+        payload: payload.as_ref().into(),
+    }
 }

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use anyhow::Result;
 use futures::executor::block_on;
 use msedge_tts::tts::SpeechConfig;
 use serde::{Deserialize, Serialize};
@@ -23,7 +22,7 @@ impl PersistentConfig for &mut UsersDB {}
 
 impl UsersDB {
     pub fn init(config_dir: Option<&str>) -> UsersDB {
-        block_on(UsersDB::load(config_dir))
+        block_on(async { UsersDB::load(config_dir).await })
     }
 
     pub async fn add_user(&mut self, nick: impl AsRef<str>) {
@@ -32,12 +31,12 @@ impl UsersDB {
     }
 
     // This will return if user exist in db or generate new user
-    pub async fn get_user(&mut self, nick: impl AsRef<str>) -> Result<&User> {
+    pub async fn get_user(&mut self, nick: impl AsRef<str>) -> &User {
         if self.users.contains_key(nick.as_ref()) {
-            Ok(self.users.get(nick.as_ref()).unwrap())
+            self.users.get(nick.as_ref()).unwrap()
         } else {
             self.add_user(nick.as_ref()).await;
-            Ok(self.users.get(nick.as_ref()).unwrap())
+            self.users.get(nick.as_ref()).unwrap()
         }
     }
 
@@ -65,7 +64,7 @@ impl User {
     pub fn new(nick: impl AsRef<str>) -> Self {
         Self {
             nick: nick.as_ref().into(),
-            speech_config: TTS_VOCE_BD.random().into(),
+            speech_config: TTS_VOCE_BD.filter_voices_by_text(&["it-IT"]).random().into(),
         }
     }
 

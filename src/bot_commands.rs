@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::pin::Pin;
 use std::sync::LazyLock;
 
@@ -6,10 +7,10 @@ use anyhow::{Error, Result};
 use tokio::sync::RwLock;
 
 use crate::irc_parser::IrcMessage;
-use crate::tts::TTS_QUEUE;
-use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BROADCAST, TWITCH_RECEIVER};
+use crate::tts::{TTS_QUEUE, voice_msg};
+use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_BROADCAST, TWITCH_RECEIVER};
 
-static COMMAND_PREFIX: &str = "!";
+pub static COMMAND_PREFIX: &str = "!";
 
 pub static BOT_COMMANDS: LazyLock<BotCommands> = LazyLock::new(|| BotCommands::default());
 type BotCommandType = fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
@@ -18,6 +19,8 @@ type BotCommandType = fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), E
 pub struct BotCommands {
     commands: RwLock<HashMap<String, BotCommandType>>,
 }
+
+// impl<T: Display> IntoIrcPRIVMSG for T {}
 
 impl BotCommands {
     pub async fn add_command(&self, trigger: impl Into<String>, command: BotCommandType) {
@@ -68,17 +71,23 @@ pub async fn start() -> Result<()> {
     Ok(())
 }
 
+impl<T: Display> IntoIrcPRIVMSG for T {}
+
 pub async fn die(_message: IrcMessage) -> Result<()> {
-    let ret_val = "Goodbye cruel world".to_string();
-    TTS_QUEUE.push_back(ret_val.clone()).await;
-    TWITCH_RECEIVER.push_back(ret_val.into_privmsg().await).await;
+    let ret_val = "Goodbye cruel world";
+    TTS_QUEUE
+        .push_back(voice_msg(&ret_val, &TWITCH_BOT_INFO.nick_name().await).await)
+        .await;
+    TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
     futures::future::err(Error::msg("I'm dying as you wish!")).await
 }
 
 pub async fn test_command(message: IrcMessage) -> Result<()> {
     let ret_val = format!("Hi there {} this is the reply to your test message", message.sender);
-    TTS_QUEUE.push_back(ret_val.clone()).await;
-    TWITCH_RECEIVER.push_back(ret_val.into_privmsg().await).await;
+    TTS_QUEUE
+        .push_back(voice_msg(&ret_val, &TWITCH_BOT_INFO.nick_name().await).await)
+        .await;
+    TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
     Ok(())
 }
 
@@ -93,7 +102,9 @@ pub async fn list_all_commands(_message: IrcMessage) -> Result<()> {
         .join(", ");
 
     let ret_val = format!("Available commands: {}", triggers);
-    TTS_QUEUE.push_back(ret_val.clone()).await;
-    TWITCH_RECEIVER.push_back(ret_val.into_privmsg().await).await;
+    TTS_QUEUE
+        .push_back(voice_msg(&ret_val, &TWITCH_BOT_INFO.nick_name().await).await)
+        .await;
+    TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
     Ok(())
 }

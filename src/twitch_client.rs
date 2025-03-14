@@ -3,23 +3,27 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use anyhow::{Result, anyhow};
+use futures::executor::block_on;
 use futures::{SinkExt, StreamExt, pin_mut};
+use msedge_tts::tts::SpeechConfig;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::defs::{BroadCastChannel, MSGQueue, PersistentConfig};
 use crate::irc_parser::{IrcMessage, parse_message};
+use crate::tts::{TTS_QUEUE, TTS_VOCE_BD, voice_msg};
 use crate::{CONFIG_DIR, log};
 
-static TWITCH_MAX_MSG_LINE_LENGTH: usize = 500;
-pub static TWITCH_BOT_INFO: LazyLock<TwitchBotInfo> = LazyLock::new(|| TwitchBotInfo::default());
+pub static TWITCH_BOT_INFO: LazyLock<TwitchBotInfo> = LazyLock::new(|| TwitchBotInfo::init());
 pub static TWITCH_BROADCAST: LazyLock<BroadCastChannel<IrcMessage>> =
     LazyLock::new(|| BroadCastChannel::<IrcMessage>::new("Twitch Broadcast channel", 10));
-pub static TWITCH_RECEIVER: LazyLock<MSGQueue<String>> = LazyLock::new(|| MSGQueue::<String>::default());
+pub static TWITCH_RECEIVER: LazyLock<MSGQueue<String>> = LazyLock::new(|| MSGQueue::new());
+
+static TWITCH_MAX_MSG_LINE_LENGTH: usize = 500;
 
 pub(crate) trait IntoIrcPRIVMSG {
-    async fn into_privmsg(&self) -> String
+    async fn as_irc_privmsg(&self) -> String
     where
         Self: Display,
     {
@@ -27,15 +31,41 @@ pub(crate) trait IntoIrcPRIVMSG {
     }
 }
 
-impl<T> IntoIrcPRIVMSG for T {}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BotSpeechConfig {
+    speech_config: SpeechConfig,
+}
+impl Default for BotSpeechConfig {
+    fn default() -> Self {
+        BotSpeechConfig {
+            speech_config: TTS_VOCE_BD.filter_voices_by_text(&["it-IT", "multi"]).random().into(),
+        }
+    }
+}
 
-#[derive(Default)]
+impl PersistentConfig for BotSpeechConfig {}
+
+impl BotSpeechConfig {
+    pub async fn init() -> Self {
+        BotSpeechConfig::load(CONFIG_DIR).await
+    }
+}
+
 pub struct TwitchBotInfo {
     nick_name: RwLock<String>,
     channel: RwLock<String>,
+    speech_config: SpeechConfig,
 }
 
 impl TwitchBotInfo {
+    pub fn init() -> Self {
+        TwitchBotInfo {
+            nick_name: RwLock::new("justinfan69696942".into()),
+            channel: RwLock::new("icsboyx".into()),
+            speech_config: block_on(async { BotSpeechConfig::init().await.speech_config }),
+        }
+    }
+
     pub async fn nick_name(&self) -> String {
         self.nick_name.read().await.to_string()
     }
@@ -50,6 +80,10 @@ impl TwitchBotInfo {
 
     pub async fn set_channel(&self, channel: impl AsRef<str>) {
         *self.channel.write().await = channel.as_ref().into();
+    }
+
+    pub async fn speech_config(&self) -> &SpeechConfig {
+        &self.speech_config
     }
 }
 
@@ -217,6 +251,7 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
                 TWITCH_BOT_INFO.set_channel(line.destination).await;
             }
             "PRIVMSG" => {
+                TTS_QUEUE.push_back(voice_msg(&line.payload, &line.sender).await).await;
                 TWITCH_BROADCAST.send_broadcast(line).await?;
             }
             _ => {}
