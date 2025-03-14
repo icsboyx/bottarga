@@ -53,7 +53,9 @@ macro_rules! log_write {
         let prefix = now!();
         let payload = format!("{} I'm here", here!());
         let padding = format!("{}{}","\n"," ".repeat(prefix.len() + 5));
+        let payload = payload
         let payload = payload.replace("\n", padding.as_ref());
+
         println!("| {} | {}", prefix, payload.color($color));
     }};
     ($color:expr,$($arg:tt)*) => {{
@@ -61,7 +63,8 @@ macro_rules! log_write {
         let prefix = now!();
         let payload = format!($($arg)*);
         let padding = format!("{}{}","\n"," ".repeat(prefix.len() + 5));
-        let payload = payload.replace("\n", padding.as_ref());
+        let mut payload = payload.replace("\n", padding.as_ref());
+        if payload.as_str().contains("PASS oauth"){payload = "PASS oauth:[ ************* Sensitive Data Content ************* ]".to_string()};
         println!("| {} | {}", prefix, payload.color($color));
     }};
 }
@@ -121,13 +124,12 @@ macro_rules! log_warning {
 #[macro_export]
 macro_rules! log_debug {
     () => {{
-        use colored::Color::C
-        log_write!(Magenta)
+        use colored::Color::*;
+        log_write!(Blue, $($arg)*);
     }};
     ($($arg:tt)*) => {{
         use colored::Color::*;
-        let payload = format!($($arg)*);
-        log_write!(Magenta, "{} {}", here!(), payload)
+        log_write!(Blue, $($arg)*);
     }};
 }
 
@@ -141,5 +143,44 @@ macro_rules! log_debug_error {
         use colored::Color::*;
         let payload = format!($($arg)*);
         log_write!(Red, "{} {}", here!(), payload)
+    }};
+}
+
+#[macro_export]
+macro_rules! log_trace {
+    () => {{
+        use colored::Color::C
+        log_write!(Magenta)
+    }};
+    ($($arg:tt)*) => {{
+        use colored::Color::*;
+        let payload = format!($($arg)*);
+        log_write!(Magenta, "{} {}", here!(), payload)
+    }};
+}
+
+#[macro_export]
+macro_rules! log_trace_error {
+    () => {{
+        use colored::Color::*;
+        log_write!(Red)
+    }};
+    ($($arg:tt)*) => {{
+        use colored::Color::*;
+        let payload = format!($($arg)*);
+        log_write!(Red, "{} {}", here!(), payload)
+    }};
+}
+
+#[macro_export]
+macro_rules! log_debugc {
+    ($color:expr) => {{
+        use colored::Color::*;
+        log_write!($color)
+    }};
+    ($color:expr,$($arg:tt)*) => {{
+        use colored::Color::*;
+        let payload = format!($($arg)*);
+        log_write!($color, "{}", payload)
     }};
 }

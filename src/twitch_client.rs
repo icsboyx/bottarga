@@ -1,40 +1,54 @@
+use std::fmt::Display;
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use anyhow::{Error, Result, anyhow};
+use anyhow::{Result, anyhow};
 use futures::{SinkExt, StreamExt, pin_mut};
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
-use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
+use tokio_tungstenite::tungstenite::Message;
 
-use crate::defs::PersistentConfig;
-use crate::irc_parser::parse_message;
-use crate::{CONFIG_DIR, irc_parser, log};
+use crate::defs::{BroadCastChannel, MSGQueue, PersistentConfig};
+use crate::irc_parser::{IrcMessage, parse_message};
+use crate::{CONFIG_DIR, log};
 
 static TWITCH_MAX_MSG_LINE_LENGTH: usize = 500;
-static TWITCH_BOT_INFO: LazyLock<TwitchBotInfo> = LazyLock::new(|| TwitchBotInfo::default());
+pub static TWITCH_BOT_INFO: LazyLock<TwitchBotInfo> = LazyLock::new(|| TwitchBotInfo::default());
+pub static TWITCH_BROADCAST: LazyLock<BroadCastChannel<IrcMessage>> =
+    LazyLock::new(|| BroadCastChannel::<IrcMessage>::new("Twitch Broadcast channel", 10));
+pub static TWITCH_RECEIVER: LazyLock<MSGQueue<String>> = LazyLock::new(|| MSGQueue::<String>::default());
+
+pub trait IntoIrcPRIVMSG {
+    fn into_privmsg(&self) -> String
+    where
+        Self: Display,
+    {
+        format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel(), self)
+    }
+}
+
+impl<T> IntoIrcPRIVMSG for T {}
 
 #[derive(Default)]
-struct TwitchBotInfo {
-    NickName: RwLock<String>,
-    Channel: RwLock<String>,
+pub struct TwitchBotInfo {
+    nick_name: std::sync::RwLock<String>,
+    channel: std::sync::RwLock<String>,
 }
 
 impl TwitchBotInfo {
-    async fn nick_name(&self) -> String {
-        self.NickName.read().await.to_string()
+    pub fn nick_name(&self) -> String {
+        self.nick_name.read().unwrap().to_string()
     }
 
-    async fn set_nickname(&self, nick_name: impl AsRef<str>) {
-        *self.NickName.write().await = nick_name.as_ref().into();
+    pub fn set_nickname(&self, nick_name: impl AsRef<str>) {
+        *self.nick_name.write().unwrap() = nick_name.as_ref().into();
     }
 
-    async fn channel(&self) -> String {
-        self.Channel.read().await.to_string()
+    pub fn channel(&self) -> String {
+        self.channel.read().unwrap().to_string()
     }
 
-    async fn set_channel(&self, channel: impl AsRef<str>) {
-        *self.Channel.write().await = channel.as_ref().into();
+    pub fn set_channel(&self, channel: impl AsRef<str>) {
+        *self.channel.write().unwrap() = channel.as_ref().into();
     }
 }
 
@@ -87,15 +101,14 @@ pub async fn start() -> Result<()> {
     let (websocket, _response) = tokio_tungstenite::connect_async("wss://irc-ws.chat.twitch.tv:443").await?;
     let (mut write, mut read) = websocket.split();
 
-    for msg in twitch_auth(&twitch_config) {
-        write.send(msg).await?;
-    }
+    twitch_auth(&twitch_config).await?;
 
     let ping_interval = tokio::time::interval(Duration::from_secs(twitch_config.ping_interval));
     pin_mut!(ping_interval);
     loop {
         tokio::select! {
             _ = ping_interval.tick() => {
+                log_debug!("Sending PING to twitch server");
                 let payload = "PING :tmi.twitch.tv";
                 write.send(payload.to_ws_text()).await?;
             }
@@ -114,7 +127,6 @@ pub async fn start() -> Result<()> {
                             _ => {
                                 log!("Received non-text message: {:?}", msg);
                             }
-
                         }
                     }
                     Some(Err(e)) => {
@@ -127,18 +139,33 @@ pub async fn start() -> Result<()> {
                 }
             }
 
+            Some(ret_val) = TWITCH_RECEIVER.next() => {
+                log_debugc!(BrightCyan, "SENDING: {:?}", ret_val);
+                let _ = write.send(ret_val.to_ws_text()).await;
+            }
+
+
+
+
         }
     }
     Ok(())
 }
 
-fn twitch_auth(config: &TwitchConfig) -> impl Iterator<Item = Message> {
-    let mut auth = vec![format!("PASS {}", config.auth_token), format!("NICK {}", config.nick)];
+async fn twitch_auth(config: &TwitchConfig) -> Result<()> {
+    let mut auth = vec![
+        format!("PASS oauth:{}", config.auth_token),
+        format!("NICK {}", config.nick),
+    ];
     for cap in &config.irc_cap_req {
         auth.push(format!("CAP REQ :{}", cap));
     }
     auth.push(format!("JOIN #{}", config.channel));
-    auth.into_iter().map(|msg| Message::text(msg))
+
+    for msg in auth {
+        TWITCH_RECEIVER.push_back(msg).await;
+    }
+    Ok(())
 }
 
 pub async fn split_message(message: impl Into<String>) -> impl Iterator<Item = String> {
@@ -168,26 +195,30 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
     // log!("{:?}", lines);
 
     for line in lines {
+        // log_debugc!(Green, "RECEIVING: {:?}", line);
         match line.command.as_str() {
-            "PING" => log_debug!("Server is pinging us"),
+            "PING" => {
+                log_debug!("Replying to Server Ping");
+                TWITCH_RECEIVER.push_back(format!("PONG :{}", line.payload)).await;
+            }
             "PRIVMSG" if line.payload == "!die" => {
-                log_error!("Voi che muoro");
-                return Result::Err(anyhow!("dddddddddd"));
+                log_error!("I'm dying cruel world");
+                return Result::Err(anyhow!("I'm dying cruel world"));
             }
             "001" => {
                 // First reply, you can use destination as bot NickName
                 log!("Bot NickName is: {}", line.destination);
-                TWITCH_BOT_INFO.set_nickname(line.destination).await;
+                TWITCH_BOT_INFO.set_nickname(line.destination);
             }
             "JOIN" => {
                 // Joining channel, you can use destination as channel name
                 log!("Joined channel: {}", line.destination);
-                TWITCH_BOT_INFO.set_channel(line.destination).await;
+                TWITCH_BOT_INFO.set_channel(line.destination);
             }
-            "PRIVMSG" => log!("{}", line.payload),
-            _ => {
-                // log_warning!("Command not managed: {:?}", line)
+            "PRIVMSG" => {
+                TWITCH_BROADCAST.send_broadcast(line).await?;
             }
+            _ => {}
         }
     }
 

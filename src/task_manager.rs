@@ -95,14 +95,14 @@ impl Default for TaskManager {
 
 impl std::fmt::Display for TaskManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.tasks)
+        write!(f, "{:?}", &self.tasks)
     }
 }
 
 impl TaskManager {
-    pub async fn add_task(&self, task: BotTask) {
-        self.tasks.write().await.push(task);
-    }
+    // pub async fn add_task(&self, task: BotTask) {
+    //     self.tasks.write().await.push(task);
+    // }
 
     pub async fn add(&self, name: impl AsRef<str>, task: BotTaskType, max_restarts: i32) {
         self.tasks.write().await.push(BotTask::new(name, task, max_restarts));

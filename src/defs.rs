@@ -1,16 +1,19 @@
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::fs::{self, create_dir_all, metadata};
+use tokio::sync::RwLock;
 
 use crate::*;
 
 pub(crate) trait PersistentConfig {
-    async fn save<'a>(&self, config_dir: Option<&'a str>) -> Result<()>
+    async fn save<'a>(&self, config_dir: Option<&'a str>)
     where
-        Self: Default + Debug + Serialize + for<'de> Deserialize<'de>,
+        Self: Default + Serialize + for<'de> Deserialize<'de>,
     {
         let file_name = std::any::type_name::<Self>().split("::").last().unwrap().to_owned() + ".toml";
         let file_path = if config_dir.is_some() {
@@ -26,18 +29,21 @@ pub(crate) trait PersistentConfig {
             Err(e) => {
                 log_error!("Unable to write to file: {:?}. Error: {}", file_path.parent(), e);
                 log_warning!("Proceeding in-memory only, config will not be persistent.");
-                return Ok(());
             } // Convert the error into Ok(()) , so the caller can proceed in memory only
         }
-        match fs::write(&file_path, toml::to_string_pretty(&self)?).await {
-            Ok(_) => {
-                log!("{} Config saved successfully: {}", &file_name, file_path.display());
-                Result::Ok(())
-            }
+        match toml::to_string_pretty(&self) {
+            Ok(ret_val) => match fs::write(&file_path, ret_val).await {
+                Ok(_) => {
+                    log!("{} Config saved successfully: {}", &file_name, file_path.display());
+                }
+                Err(e) => {
+                    log_error!("Unable to write to file: {:?}. Error: {}", file_path.display(), e);
+                    log_warning!("Proceeding in-memory only, config will not be persistent.");
+                }
+            },
             Err(e) => {
-                log_error!("Unable to write to file: {:?}. Error: {}", file_path.display(), e);
+                log_error!("Unable to serialize config: {}. Error: {}", file_path.display(), e);
                 log_warning!("Proceeding in-memory only, config will not be persistent.");
-                Result::Ok(())
             }
         }
     }
@@ -60,7 +66,7 @@ pub(crate) trait PersistentConfig {
 
     async fn load(config_dir: Option<&str>) -> Self
     where
-        Self: Default + Debug + Serialize + for<'de> Deserialize<'de>,
+        Self: Default + Serialize + for<'de> Deserialize<'de>,
     {
         let file_name = std::any::type_name::<Self>().split("::").last().unwrap().to_owned() + ".toml";
         let file_path = if config_dir.is_some() {
@@ -87,9 +93,89 @@ pub(crate) trait PersistentConfig {
                 log_error!("Unable to read file: {}. Error: {}", file_path.display(), e);
                 log_warning!("Proceeding in-memory only, config will not be persistent.");
                 let ret_val = Self::default();
-                ret_val.save(config_dir).await.unwrap();
+                ret_val.save(config_dir).await;
                 ret_val
             }
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+
+pub struct BroadCastChannel<T>
+where
+    T: Sync + Send + Clone + 'static,
+{
+    name: String,
+    broadcaster: tokio::sync::broadcast::Sender<T>,
+}
+
+impl<BM> BroadCastChannel<BM>
+where
+    BM: Sync + Send + Clone + Debug + 'static,
+{
+    pub fn new(name: impl Into<String>, capacity: usize) -> Self {
+        let (broadcaster_tx, _) = tokio::sync::broadcast::channel(capacity);
+        Self {
+            name: name.into(),
+            broadcaster: broadcaster_tx,
+        }
+    }
+
+    pub fn init(&self) -> &Self {
+        println!("Channel {} initialized", self.name);
+        self
+    }
+
+    pub async fn send_broadcast(&self, message: BM) -> Result<()> {
+        if self.broadcaster.receiver_count() > 0 {
+            self.broadcaster.send(message)?;
+        }
+        Ok(())
+    }
+
+    pub async fn subscribe_broadcast(&self) -> tokio::sync::broadcast::Receiver<BM> {
+        self.broadcaster.subscribe()
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct MSGQueue<T>
+where
+    T: Sync + Send + Clone + Debug + 'static,
+{
+    queue: Arc<RwLock<VecDeque<T>>>,
+    notify: Arc<tokio::sync::Notify>,
+}
+
+impl<T> MSGQueue<T>
+where
+    T: Sync + Send + Clone + Debug + 'static,
+{
+    pub async fn push_back(&self, payload: T) {
+        self.queue.write().await.push_back(payload);
+        self.notify.notify_waiters();
+    }
+
+    pub async fn next(&self) -> Option<T> {
+        loop {
+            if let Some(value) = self.queue.write().await.pop_front() {
+                return Some(value);
+            }
+            self.notify.notified().await;
+        }
+    }
+
+    pub async fn next_error(&self) -> Result<T> {
+        loop {
+            if let Some(value) = self.queue.write().await.pop_front() {
+                return Ok(value);
+            }
+            self.notify.notified().await;
+        }
+    }
+
+    pub async fn len(&self) -> usize {
+        self.queue.read().await.len()
     }
 }
