@@ -5,6 +5,7 @@ use std::time::Duration;
 use anyhow::{Result, anyhow};
 use futures::{SinkExt, StreamExt, pin_mut};
 use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::defs::{BroadCastChannel, MSGQueue, PersistentConfig};
@@ -17,12 +18,12 @@ pub static TWITCH_BROADCAST: LazyLock<BroadCastChannel<IrcMessage>> =
     LazyLock::new(|| BroadCastChannel::<IrcMessage>::new("Twitch Broadcast channel", 10));
 pub static TWITCH_RECEIVER: LazyLock<MSGQueue<String>> = LazyLock::new(|| MSGQueue::<String>::default());
 
-pub trait IntoIrcPRIVMSG {
-    fn into_privmsg(&self) -> String
+pub(crate) trait IntoIrcPRIVMSG {
+    async fn into_privmsg(&self) -> String
     where
         Self: Display,
     {
-        format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel(), self)
+        format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel().await, self)
     }
 }
 
@@ -30,25 +31,25 @@ impl<T> IntoIrcPRIVMSG for T {}
 
 #[derive(Default)]
 pub struct TwitchBotInfo {
-    nick_name: std::sync::RwLock<String>,
-    channel: std::sync::RwLock<String>,
+    nick_name: RwLock<String>,
+    channel: RwLock<String>,
 }
 
 impl TwitchBotInfo {
-    pub fn nick_name(&self) -> String {
-        self.nick_name.read().unwrap().to_string()
+    pub async fn nick_name(&self) -> String {
+        self.nick_name.read().await.to_string()
     }
 
-    pub fn set_nickname(&self, nick_name: impl AsRef<str>) {
-        *self.nick_name.write().unwrap() = nick_name.as_ref().into();
+    pub async fn set_nickname(&self, nick_name: impl AsRef<str>) {
+        *self.nick_name.write().await = nick_name.as_ref().into();
     }
 
-    pub fn channel(&self) -> String {
-        self.channel.read().unwrap().to_string()
+    pub async fn channel(&self) -> String {
+        self.channel.read().await.to_string()
     }
 
-    pub fn set_channel(&self, channel: impl AsRef<str>) {
-        *self.channel.write().unwrap() = channel.as_ref().into();
+    pub async fn set_channel(&self, channel: impl AsRef<str>) {
+        *self.channel.write().await = channel.as_ref().into();
     }
 }
 
@@ -208,12 +209,12 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
             "001" => {
                 // First reply, you can use destination as bot NickName
                 log!("Bot NickName is: {}", line.destination);
-                TWITCH_BOT_INFO.set_nickname(line.destination);
+                TWITCH_BOT_INFO.set_nickname(line.destination).await;
             }
             "JOIN" => {
                 // Joining channel, you can use destination as channel name
                 log!("Joined channel: {}", line.destination);
-                TWITCH_BOT_INFO.set_channel(line.destination);
+                TWITCH_BOT_INFO.set_channel(line.destination).await;
             }
             "PRIVMSG" => {
                 TWITCH_BROADCAST.send_broadcast(line).await?;

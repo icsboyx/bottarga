@@ -12,7 +12,6 @@ use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BROADCAST, TWITCH_RECEIVER};
 static COMMAND_PREFIX: &str = "!";
 
 pub static BOT_COMMANDS: LazyLock<BotCommands> = LazyLock::new(|| BotCommands::default());
-
 type BotCommandType = fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
 
 #[derive(Default)]
@@ -23,7 +22,7 @@ pub struct BotCommands {
 impl BotCommands {
     pub async fn add_command(&self, trigger: impl Into<String>, command: BotCommandType) {
         let trigger = trigger.into();
-        println!("[DEBUG] Adding command: {}", trigger);
+        log_debug!("[DEBUG] Adding command: {}", trigger);
         self.commands.write().await.insert(trigger, command);
     }
 
@@ -72,14 +71,14 @@ pub async fn start() -> Result<()> {
 pub async fn die(_message: IrcMessage) -> Result<()> {
     let ret_val = "Goodbye cruel world".to_string();
     TTS_QUEUE.push_back(ret_val.clone()).await;
-    TWITCH_RECEIVER.push_back(ret_val.into_privmsg()).await;
+    TWITCH_RECEIVER.push_back(ret_val.into_privmsg().await).await;
     futures::future::err(Error::msg("I'm dying as you wish!")).await
 }
 
 pub async fn test_command(message: IrcMessage) -> Result<()> {
     let ret_val = format!("Hi there {} this is the reply to your test message", message.sender);
     TTS_QUEUE.push_back(ret_val.clone()).await;
-    TWITCH_RECEIVER.push_back(ret_val.into_privmsg()).await;
+    TWITCH_RECEIVER.push_back(ret_val.into_privmsg().await).await;
     Ok(())
 }
 
@@ -95,6 +94,6 @@ pub async fn list_all_commands(_message: IrcMessage) -> Result<()> {
 
     let ret_val = format!("Available commands: {}", triggers);
     TTS_QUEUE.push_back(ret_val.clone()).await;
-    TWITCH_RECEIVER.push_back(ret_val.into_privmsg()).await;
+    TWITCH_RECEIVER.push_back(ret_val.into_privmsg().await).await;
     Ok(())
 }

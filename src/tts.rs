@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use anyhow::Result;
 use msedge_tts::tts::SpeechConfig;
-use msedge_tts::voice::Voice;
+use msedge_tts::voice::{Voice, get_voices_list};
 use rand::Rng;
 use regex::Regex;
 
@@ -34,9 +34,17 @@ pub async fn start() -> Result<()> {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct VoiceDB {
     voice_list: Vec<Voice>,
+}
+
+impl Default for VoiceDB {
+    fn default() -> Self {
+        Self {
+            voice_list: get_voices_list().unwrap(),
+        }
+    }
 }
 
 impl VoiceDB {

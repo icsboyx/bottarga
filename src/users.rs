@@ -28,6 +28,7 @@ impl UsersDB {
 
     pub async fn add_user(&mut self, nick: impl AsRef<str>) {
         self.users.insert(nick.as_ref().into(), User::new(nick));
+        (*self).save(CONFIG_DIR).await;
     }
 
     // This will return if user exist in db or generate new user
