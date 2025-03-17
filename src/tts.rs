@@ -9,8 +9,10 @@ use rand::Rng;
 use regex::Regex;
 
 use crate::audio_player::TTS_AUDIO_QUEUE;
+use crate::bot_commands::BOT_COMMANDS;
 use crate::defs::MSGQueue;
-use crate::twitch_client::TWITCH_BOT_INFO;
+use crate::irc_parser::IrcMessage;
+use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_RECEIVER};
 use crate::users::USER_DB;
 
 pub static TTS_VOCE_BD: LazyLock<VoiceDB> = LazyLock::new(|| VoiceDB::default());
@@ -18,6 +20,11 @@ pub static TTS_QUEUE: LazyLock<MSGQueue<TTSMassage>> = LazyLock::new(|| MSGQueue
 static TRANSFORM_CHARS: &[(char, &str)] = &[('&', "and"), ('%', "percent")];
 
 pub async fn start() -> Result<()> {
+    BOT_COMMANDS
+        .add_command("list_locales", |irc_message| {
+            Box::pin(tts_list_all_locales(irc_message))
+        })
+        .await;
     loop {
         tokio::select! {
 
@@ -200,4 +207,10 @@ pub async fn voice_msg(payload: &impl AsRef<str>, nick: &impl AsRef<str>) -> TTS
         speech_config: speech_config.clone(),
         payload: payload.as_ref().into(),
     }
+}
+
+pub async fn tts_list_all_locales(_message: IrcMessage) -> Result<()> {
+    let ret_val = format!("Available locales: {}", TTS_VOCE_BD.list_all_locales().await.join(", "));
+    TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
+    Ok(())
 }

@@ -10,7 +10,7 @@ use crate::irc_parser::IrcMessage;
 use crate::tts::{TTS_QUEUE, voice_msg};
 use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_BROADCAST, TWITCH_RECEIVER};
 
-pub static COMMAND_PREFIX: &str = "!";
+pub static BOT_COMMAND_PREFIX: &str = "%";
 
 pub static BOT_COMMANDS: LazyLock<BotCommands> = LazyLock::new(|| BotCommands::default());
 type BotCommandType = fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
@@ -55,13 +55,13 @@ pub async fn start() -> Result<()> {
     // Read all broadcasted commands from Twitch_client
     while let Ok(ret_val) = test_broadcast_rx.recv().await {
         match ret_val.command.as_str() {
-            "PRIVMSG" if ret_val.payload.starts_with(COMMAND_PREFIX) => {
+            "PRIVMSG" if ret_val.payload.starts_with(BOT_COMMAND_PREFIX) => {
                 let command = ret_val
                     .payload
                     .split_whitespace()
                     .next()
                     .unwrap()
-                    .trim_start_matches(COMMAND_PREFIX);
+                    .trim_start_matches(BOT_COMMAND_PREFIX);
                 BOT_COMMANDS.run_command(command, ret_val.clone()).await?;
             }
             _ => {}
@@ -97,7 +97,7 @@ pub async fn list_all_commands(_message: IrcMessage) -> Result<()> {
         .read()
         .await
         .iter()
-        .map(|(trigger, _)| format!("{}{}", COMMAND_PREFIX, trigger))
+        .map(|(trigger, _)| format!("{}{}", BOT_COMMAND_PREFIX, trigger))
         .collect::<Vec<_>>()
         .join(", ");
 

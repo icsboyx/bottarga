@@ -1,3 +1,4 @@
+use std::any::TypeId;
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -161,6 +162,11 @@ where
 
     pub async fn push_back(&self, payload: T) {
         self.queue.write().await.push_back(payload);
+        println!(
+            "{} elements in queue {}",
+            std::any::type_name::<Self>(),
+            self.len().await
+        );
         self.notify.notify_waiters();
     }
 

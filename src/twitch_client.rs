@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::Message;
 
+use crate::bot_commands::BOT_COMMAND_PREFIX;
 use crate::defs::{BroadCastChannel, MSGQueue, PersistentConfig};
 use crate::irc_parser::{IrcMessage, parse_message};
 use crate::tts::{TTS_QUEUE, TTS_VOCE_BD, voice_msg};
@@ -18,16 +19,21 @@ use crate::{CONFIG_DIR, log};
 pub static TWITCH_BOT_INFO: LazyLock<TwitchBotInfo> = LazyLock::new(|| TwitchBotInfo::init());
 pub static TWITCH_BROADCAST: LazyLock<BroadCastChannel<IrcMessage>> =
     LazyLock::new(|| BroadCastChannel::<IrcMessage>::new("Twitch Broadcast channel", 10));
-pub static TWITCH_RECEIVER: LazyLock<MSGQueue<String>> = LazyLock::new(|| MSGQueue::new());
+pub static TWITCH_RECEIVER: LazyLock<MSGQueue<Vec<String>>> = LazyLock::new(|| MSGQueue::new());
 
-static TWITCH_MAX_MSG_LINE_LENGTH: usize = 500;
+static TWITCH_MAX_MSG_LINE_LENGTH: usize = 400;
 
 pub(crate) trait IntoIrcPRIVMSG {
-    async fn as_irc_privmsg(&self) -> String
+    async fn as_irc_privmsg(&self) -> Vec<String>
     where
-        Self: Display,
+        Self: Display + AsRef<str>,
     {
-        format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel().await, self)
+        split_lines(self).await.fold(Vec::<String>::new(), |mut lines, line| {
+            lines.push(block_on(async {
+                format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel().await, line)
+            }));
+            lines
+        })
     }
 }
 
@@ -175,8 +181,13 @@ pub async fn start() -> Result<()> {
             }
 
             Some(ret_val) = TWITCH_RECEIVER.next() => {
-                log_debugc!(BrightCyan, "SENDING: {:?}", ret_val);
-                let _ = write.send(ret_val.to_ws_text()).await;
+                for line in ret_val {
+                log_debugc!(BrightCyan, "SENDING: {:?}", line);
+                let _ = write.send(line.to_ws_text()).await;
+                        }
+                // for line in split_lines(ret_val).await{
+                //     let _ = write.send(line.as_irc_privmsg().await.to_ws_text()).await;
+                // }
             }
 
 
@@ -197,15 +208,14 @@ async fn twitch_auth(config: &TwitchConfig) -> Result<()> {
     }
     auth.push(format!("JOIN #{}", config.channel));
 
-    for msg in auth {
-        TWITCH_RECEIVER.push_back(msg).await;
-    }
+    TWITCH_RECEIVER.push_back(auth).await;
+
     Ok(())
 }
 
-pub async fn split_message(message: impl Into<String>) -> impl Iterator<Item = String> {
+pub async fn split_lines(message: impl AsRef<str>) -> impl Iterator<Item = String> {
     let messages = message
-        .into()
+        .as_ref()
         .split_whitespace()
         .fold(Vec::new(), |mut lines: Vec<String>, word| {
             if let Some(last) = lines.last_mut() {
@@ -234,7 +244,9 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
         match line.command.as_str() {
             "PING" => {
                 log_debug!("Replying to Server Ping");
-                TWITCH_RECEIVER.push_back(format!("PONG :{}", line.payload)).await;
+                TWITCH_RECEIVER
+                    .push_back([format!("PONG :{}", line.payload)].to_vec())
+                    .await;
             }
             "PRIVMSG" if line.payload == "!die" => {
                 log_error!("I'm dying cruel world");
@@ -251,8 +263,10 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
                 TWITCH_BOT_INFO.set_channel(line.destination).await;
             }
             "PRIVMSG" => {
-                TTS_QUEUE.push_back(voice_msg(&line.payload, &line.sender).await).await;
-                TWITCH_BROADCAST.send_broadcast(line).await?;
+                TWITCH_BROADCAST.send_broadcast(line.clone()).await?;
+                if !line.payload.starts_with(BOT_COMMAND_PREFIX) {
+                    TTS_QUEUE.push_back(voice_msg(&line.payload, &line.sender).await).await;
+                }
             }
             _ => {}
         }

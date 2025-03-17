@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::CONFIG_DIR;
+use crate::bot_commands::BOT_COMMANDS;
 use crate::defs::PersistentConfig;
 use crate::tts::TTS_VOCE_BD;
 
@@ -18,7 +19,6 @@ pub struct UsersDB {
 }
 
 impl PersistentConfig for UsersDB {}
-impl PersistentConfig for &mut UsersDB {}
 
 impl UsersDB {
     pub fn init(config_dir: Option<&str>) -> UsersDB {

@@ -1,5 +1,5 @@
 // Parse the twitch message and return the  message object
-#![allow(dead_code, unused_variables)]
+// #![allow(dead_code, unused_variables)]
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
