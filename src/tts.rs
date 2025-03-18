@@ -212,16 +212,11 @@ pub async fn tts_list_all_locales(_message: IrcMessage) -> Result<()> {
 
 pub async fn tts_reset_voice(message: IrcMessage) -> Result<()> {
     let nick = message.sender;
+    let filter = &message.payload.split_whitespace().collect::<Vec<_>>()[1..];
     USER_DB
         .write()
         .await
-        .update_user(
-            &nick,
-            &TTS_VOCE_BD
-                .filter_voices_by_text(&message.payload.split_whitespace().collect::<Vec<_>>()[1..])
-                .random()
-                .into(),
-        )
+        .update_user(&nick, (TTS_VOCE_BD.filter_voices_by_text(filter).random()).into())
         .await;
     let payload = format!(
         "@{}, your voice config has been updated to {}",
@@ -234,7 +229,6 @@ pub async fn tts_reset_voice(message: IrcMessage) -> Result<()> {
             .get_speech_config()
             .voice_name
     );
-
     TTS_QUEUE
         .push_back(voice_msg(&payload, &TWITCH_BOT_INFO.nick_name().await).await)
         .await;

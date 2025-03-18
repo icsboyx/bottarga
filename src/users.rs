@@ -8,8 +8,7 @@ use tokio::sync::RwLock;
 
 use crate::CONFIG_DIR;
 use crate::defs::PersistentConfig;
-use crate::tts::{TTS_QUEUE, TTS_VOCE_BD, voice_msg};
-use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_RECEIVER};
+use crate::tts::TTS_VOCE_BD;
 
 pub static USER_DB: LazyLock<RwLock<UsersDB>> = LazyLock::new(|| RwLock::new(UsersDB::init(CONFIG_DIR)));
 
@@ -25,25 +24,30 @@ impl UsersDB {
         block_on(async { UsersDB::load(config_dir).await })
     }
 
-    pub async fn add_user(&mut self, nick: impl AsRef<str>) {
-        self.users.insert(nick.as_ref().into(), User::new(nick));
-        (*self).save(CONFIG_DIR).await;
+    pub async fn add_new_user(&mut self, nick: impl AsRef<str>) -> User {
+        let user = User::new(&nick);
+        self.users.insert(nick.as_ref().into(), user.clone());
+        (self).save(CONFIG_DIR).await;
+        user
+    }
+
+    pub async fn update_user(&mut self, nick: impl AsRef<str>, speech_config: SpeechConfig) -> User {
+        self.users.insert(nick.as_ref().into(), User {
+            nick: nick.as_ref().into(),
+            speech_config,
+        });
+        let _ = (*self).save(CONFIG_DIR).await;
+        self.get_user(nick).await
     }
 
     // This will return if user exist in db or generate new user
-    pub async fn get_user(&mut self, nick: impl AsRef<str>) -> &User {
-        if self.users.contains_key(nick.as_ref()) {
-            self.users.get(nick.as_ref()).unwrap()
+    pub async fn get_user(&mut self, nick: impl AsRef<str>) -> User {
+        if let Some(user) = self.users.get(nick.as_ref()) {
+            user.clone()
         } else {
-            self.add_user(nick.as_ref()).await;
-            self.users.get(nick.as_ref()).unwrap()
+            log_debug!("User not found, creating new user: {}", nick.as_ref());
+            self.add_new_user(nick).await
         }
-    }
-
-    pub async fn update_user(&mut self, nick: impl AsRef<str>, speech_config: &SpeechConfig) {
-        log_trace!("Updating user: {} with {:?}", nick.as_ref(), speech_config);
-        self.users.get_mut(nick.as_ref()).unwrap().speech_config = speech_config.clone();
-        let _ = (*self).save(CONFIG_DIR).await;
     }
 }
 #[derive(Deserialize, Serialize, Debug, Clone)]
