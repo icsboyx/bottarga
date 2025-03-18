@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::CONFIG_DIR;
-use crate::bot_commands::BOT_COMMANDS;
 use crate::defs::PersistentConfig;
-use crate::tts::TTS_VOCE_BD;
+use crate::tts::{TTS_QUEUE, TTS_VOCE_BD, voice_msg};
+use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_RECEIVER};
 
 pub static USER_DB: LazyLock<RwLock<UsersDB>> = LazyLock::new(|| RwLock::new(UsersDB::init(CONFIG_DIR)));
 
@@ -41,6 +41,7 @@ impl UsersDB {
     }
 
     pub async fn update_user(&mut self, nick: impl AsRef<str>, speech_config: &SpeechConfig) {
+        log_trace!("Updating user: {} with {:?}", nick.as_ref(), speech_config);
         self.users.get_mut(nick.as_ref()).unwrap().speech_config = speech_config.clone();
         let _ = (*self).save(CONFIG_DIR).await;
     }

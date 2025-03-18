@@ -151,8 +151,8 @@ async fn task_monitor() -> Result<()> {
     loop {
         tokio::select! {
             _ = task_monitor_tick.tick() => {
-                for task in TASKS_MANAGER.get_stats().await{
-                    log!("{}", task)
+                for task in TASKS_MANAGER.tasks.read().await.iter(){
+                    log!("Task {:<20}: {}", task.name, task.task_status.read().await.get_stats().await)
                 } ;
             }
         }

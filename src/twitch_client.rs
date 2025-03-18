@@ -182,12 +182,10 @@ pub async fn start() -> Result<()> {
 
             Some(ret_val) = TWITCH_RECEIVER.next() => {
                 for line in ret_val {
-                log_debugc!(BrightCyan, "SENDING: {:?}", line);
+                    log_debugc!(BrightCyan, "SENDING: {:?}", line);
                 let _ = write.send(line.to_ws_text()).await;
-                        }
-                // for line in split_lines(ret_val).await{
-                //     let _ = write.send(line.as_irc_privmsg().await.to_ws_text()).await;
-                // }
+            }
+
             }
 
 

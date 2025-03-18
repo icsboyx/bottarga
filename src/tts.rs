@@ -25,21 +25,16 @@ pub async fn start() -> Result<()> {
             Box::pin(tts_list_all_locales(irc_message))
         })
         .await;
-    loop {
-        tokio::select! {
 
-            // Ok(message) = twitch_broadcast.recv() => {
-            //     if !message.payload.starts_with(COMMAND_PREFIX) {
-            //   text_to_speech(message.payload, USER_DB.write().await.get_user(message.sender).await.unwrap().get_speech_config()).await?;
-            //     }}
+    BOT_COMMANDS
+        .add_command("reset_voice", |irc_message| Box::pin(tts_reset_voice(irc_message)))
+        .await;
 
-          Some(ret_val) = TTS_QUEUE.next() => {
-            text_to_speech(ret_val).await?;
-          }
-        }
+    while let Some(tts_message) = TTS_QUEUE.next().await {
+        text_to_speech(tts_message).await?;
     }
+    Ok(())
 }
-
 #[derive(Debug, Clone)]
 pub struct TTSMassage {
     pub speech_config: SpeechConfig,
@@ -212,5 +207,37 @@ pub async fn voice_msg(payload: &impl AsRef<str>, nick: &impl AsRef<str>) -> TTS
 pub async fn tts_list_all_locales(_message: IrcMessage) -> Result<()> {
     let ret_val = format!("Available locales: {}", TTS_VOCE_BD.list_all_locales().await.join(", "));
     TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
+    Ok(())
+}
+
+pub async fn tts_reset_voice(message: IrcMessage) -> Result<()> {
+    let nick = message.sender;
+    USER_DB
+        .write()
+        .await
+        .update_user(
+            &nick,
+            &TTS_VOCE_BD
+                .filter_voices_by_text(&message.payload.split_whitespace().collect::<Vec<_>>()[1..])
+                .random()
+                .into(),
+        )
+        .await;
+    let payload = format!(
+        "@{}, your voice config has been updated to {}",
+        nick,
+        USER_DB
+            .write()
+            .await
+            .get_user(&nick)
+            .await
+            .get_speech_config()
+            .voice_name
+    );
+
+    TTS_QUEUE
+        .push_back(voice_msg(&payload, &TWITCH_BOT_INFO.nick_name().await).await)
+        .await;
+    TWITCH_RECEIVER.push_back(payload.as_irc_privmsg().await).await;
     Ok(())
 }
