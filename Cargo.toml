@@ -29,6 +29,7 @@ msedge-tts = "0.2.4"
 rand = "0.9.0"
 rodio = "0.20.1"
 regex = "1.11.1"
+kira = "0.10.4"
 
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]

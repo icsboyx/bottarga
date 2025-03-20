@@ -10,7 +10,7 @@ use crate::irc_parser::IrcMessage;
 use crate::tts::{TTS_QUEUE, voice_msg};
 use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_BROADCAST, TWITCH_RECEIVER};
 
-pub static BOT_COMMAND_PREFIX: &str = "%";
+pub static BOT_COMMAND_PREFIX: &str = "!";
 
 pub static BOT_COMMANDS: LazyLock<BotCommands> = LazyLock::new(|| BotCommands::default());
 type BotCommandType = fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
@@ -30,6 +30,7 @@ impl BotCommands {
     }
 
     pub async fn run_command(&self, command: &str, message: IrcMessage) -> Result<()> {
+        log_trace!("[DEBUG] Running command: {}", command);
         if let Some(func) = self.commands.read().await.get(command) {
             func(message).await?;
         }
