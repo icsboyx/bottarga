@@ -7,10 +7,12 @@ use msedge_tts::tts::SpeechConfig;
 use msedge_tts::voice::{Voice, get_voices_list};
 use rand::Rng;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
+use crate::CONFIG_DIR;
 use crate::audio_player::TTS_AUDIO_QUEUE;
 use crate::bot_commands::BOT_COMMANDS;
-use crate::defs::MSGQueue;
+use crate::defs::{MSGQueue, PersistentConfig};
 use crate::irc_parser::IrcMessage;
 use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_RECEIVER};
 use crate::users::USER_DB;
@@ -20,6 +22,7 @@ pub static TTS_QUEUE: LazyLock<MSGQueue<TTSMassage>> = LazyLock::new(|| MSGQueue
 static TRANSFORM_CHARS: &[(char, &str)] = &[('&', "and"), ('%', "percent")];
 
 pub async fn start() -> Result<()> {
+    TTS_VOCE_BD.save(CONFIG_DIR).await;
     BOT_COMMANDS
         .add_command("list_locales", |irc_message| {
             Box::pin(tts_list_all_locales(irc_message))
@@ -56,7 +59,7 @@ impl Default for TTSMassage {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceDB {
     voice_list: Vec<Voice>,
 }
@@ -68,6 +71,8 @@ impl Default for VoiceDB {
         }
     }
 }
+
+impl PersistentConfig for VoiceDB {}
 
 impl VoiceDB {
     pub async fn list_all_voices(&self) -> Vec<&String> {
