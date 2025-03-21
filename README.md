@@ -2,7 +2,7 @@
 
 # Bottarga
 
-Bottarga is a simle Test to Speech bot for Twitch chat. 
+Bottarga is a simle Text to Speech bot for Twitch chat. 
 It can read chat messages and convert them to the voice.
 Can interact with Twitch Chat. And execute commands from chat.
 Command are predefined and can be extended. 
@@ -46,7 +46,7 @@ Bottarga is a multi-functional project that integrates various components to pro
      - **`!list_locales`**: Show list of supported locales for TTS.
      - **`!reset_voice`**:  
        > Reset voice to random if no arguments are provided.  
-       > If arguments are provided, a test search is applied on VoiceDB to find a voice.  
+       > If arguments are provided, a text search is applied on VoiceDB to find a voice.  
        > In case of multiple results, a random one is selected from the search results.
      - **`!stop`**: Stop Audio playing.
      - **`!die`**: temporary command to test command service restart (in this case only on bot commands task). 
