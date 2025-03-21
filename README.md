@@ -1,3 +1,4 @@
+<div style="text-align:center"><img src="assets/bottarga.png" /></div>
 
 # Bottarga
 
