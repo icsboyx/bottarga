@@ -25,12 +25,12 @@ pub struct BotCommands {
 impl BotCommands {
     pub async fn add_command(&self, trigger: impl Into<String>, command: BotCommandType) {
         let trigger = trigger.into();
-        log_debug!("[DEBUG] Adding command: {}", trigger);
+        log_debug!("Adding command: {}", trigger);
         self.commands.write().await.insert(trigger, command);
     }
 
     pub async fn run_command(&self, command: &str, message: IrcMessage) -> Result<()> {
-        log_trace!("[DEBUG] Running command: {}", command);
+        log_trace!("Running command: {}", command);
         if let Some(func) = self.commands.read().await.get(command) {
             func(message).await?;
         }

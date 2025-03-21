@@ -32,8 +32,6 @@ async fn main() -> Result<()> {
         .add("BOT_COMMANDS", || Box::pin(bot_commands::start()), 3)
         .await;
 
-    log_debug!("{}", *TASKS_MANAGER);
-
     TASKS_MANAGER.list().await;
     TASKS_MANAGER.run_tasks().await;
 

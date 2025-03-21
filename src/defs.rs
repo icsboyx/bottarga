@@ -106,7 +106,6 @@ pub struct BroadCastChannel<T>
 where
     T: Sync + Send + Clone + 'static,
 {
-    name: String,
     broadcaster: tokio::sync::broadcast::Sender<T>,
 }
 
@@ -114,16 +113,14 @@ impl<BM> BroadCastChannel<BM>
 where
     BM: Sync + Send + Clone + Debug + 'static,
 {
-    pub fn new(name: impl Into<String>, capacity: usize) -> Self {
+    pub fn new(capacity: usize) -> Self {
         let (broadcaster_tx, _) = tokio::sync::broadcast::channel(capacity);
         Self {
-            name: name.into(),
             broadcaster: broadcaster_tx,
         }
     }
 
     pub fn init(&self) -> &Self {
-        println!("Channel {} initialized", self.name);
         self
     }
 
@@ -161,11 +158,6 @@ where
 
     pub async fn push_back(&self, payload: T) {
         self.queue.write().await.push_back(payload);
-        println!(
-            "{} elements in queue {}",
-            std::any::type_name::<Self>(),
-            self.len().await
-        );
         self.notify.notify_waiters();
     }
 

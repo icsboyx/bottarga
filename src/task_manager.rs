@@ -123,9 +123,9 @@ impl TaskManager {
                     || task.task_status.read().await.max_restarts >= task.task_status.read().await.restart_status
                 {
                     if task.task_status.read().await.restart_status > 0 {
-                        log_warning!("RESTARTING {}", format!("{:?}", &task));
+                        log_debug!("RESTARTING {}", format!("{:?}", &task));
                     } else {
-                        log_warning!("STARTING {}", format!("{:?}", &task));
+                        log_debug!("STARTING {}", format!("{:?}", &task));
                     }
                     let _ = task.run().await;
                     task.task_status.write().await.restart_status += 1;

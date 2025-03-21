@@ -18,7 +18,7 @@ use crate::{CONFIG_DIR, log};
 
 pub static TWITCH_BOT_INFO: LazyLock<TwitchBotInfo> = LazyLock::new(|| TwitchBotInfo::init());
 pub static TWITCH_BROADCAST: LazyLock<BroadCastChannel<IrcMessage>> =
-    LazyLock::new(|| BroadCastChannel::<IrcMessage>::new("Twitch Broadcast channel", 10));
+    LazyLock::new(|| BroadCastChannel::<IrcMessage>::new(10));
 pub static TWITCH_RECEIVER: LazyLock<MSGQueue<Vec<String>>> = LazyLock::new(|| MSGQueue::new());
 
 static TWITCH_MAX_MSG_LINE_LENGTH: usize = 400;
@@ -182,7 +182,7 @@ pub async fn start() -> Result<()> {
 
             Some(ret_val) = TWITCH_RECEIVER.next() => {
                 for line in ret_val {
-                    log_debugc!(BrightCyan, "SENDING: {:?}", line);
+                    log_debug!("SENDING: {:?}", line);
                 let _ = write.send(line.to_ws_text()).await;
             }
 
@@ -238,7 +238,6 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
     // log!("{:?}", lines);
 
     for line in lines {
-        // log_debugc!(Green, "RECEIVING: {:?}", line);
         match line.command.as_str() {
             "PING" => {
                 log_debug!("Replying to Server Ping");

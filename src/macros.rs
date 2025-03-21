@@ -113,72 +113,94 @@ macro_rules! log_error {
 macro_rules! log_warning {
     () => {{
         use colored::Color::Yellow;
-        log_write!(Yellow)
+        log_write!(Yellow,"[WARNING] ")
     }};
     ($($arg:tt)*) => {{
         use colored::Color::Yellow;
-        log_write!(Yellow, $($arg)*)
+        let payload = format!($($arg)*);
+        log_write!(Yellow, "[WARNING] {}", payload);
     }};
 }
 
 #[macro_export]
 macro_rules! log_debug {
-    () => {{
+    () => {
+    #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
-        log_write!(Blue, $($arg)*);
+        log_write!(Blue, "[DEBUG] ");
     }};
-    ($($arg:tt)*) => {{
+    ($($arg:tt)*) => {
+    #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
-        log_write!(Blue, $($arg)*);
+        let payload = format!($($arg)*);
+        log_write!(Blue, "[DEBUG] {}", payload);
     }};
 }
 
 #[macro_export]
 macro_rules! log_debug_error {
-    () => {{
+    () => {
+        #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
         log_write!(Red)
     }};
-    ($($arg:tt)*) => {{
+    ($($arg:tt)*) => {
+        #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
         let payload = format!($($arg)*);
-        log_write!(Red, "{} {}", here!(), payload)
+        log_write!(Red, "[DEBUG] {} {}", here!(), payload)
     }};
 }
 
 #[macro_export]
 macro_rules! log_trace {
-    () => {{
-        use colored::Color::C
-        log_write!(Magenta)
+    () => {
+        #[cfg(debug_assertions)]
+        {
+        use colored::Color::*;
+        log_write!(Magenta, "[TRACE] ")
     }};
-    ($($arg:tt)*) => {{
+    ($($arg:tt)*) => {
+        #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
         let payload = format!($($arg)*);
-        log_write!(Magenta, "{} {}", here!(), payload)
+        log_write!(Magenta, "[TRACE] {} {}", here!(), payload)
     }};
 }
 
 #[macro_export]
 macro_rules! log_trace_error {
-    () => {{
+    () => {
+        #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
-        log_write!(Red)
+        log_write!(Red, "[TRACE] ")
     }};
-    ($($arg:tt)*) => {{
+    ($($arg:tt)*) => {
+        #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
         let payload = format!($($arg)*);
-        log_write!(Red, "{} {}", here!(), payload)
+        log_write!(Red, "[TRACE] {} {}", here!(), payload)
     }};
 }
 
 #[macro_export]
 macro_rules! log_debugc {
-    ($color:expr) => {{
+    ($color:expr) => {
+        #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
         log_write!($color)
     }};
-    ($color:expr,$($arg:tt)*) => {{
+    ($color:expr,$($arg:tt)*) => {
+        #[cfg(debug_assertions)]
+        {
         use colored::Color::*;
         let payload = format!($($arg)*);
         log_write!($color, "{}", payload)
