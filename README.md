@@ -48,8 +48,8 @@ Bottarga is a multi-functional project that integrates various components to pro
        > Reset voice to random if no arguments are provided.  
        > If arguments are provided, a test search is applied on VoiceDB to find a voice.  
        > In case of multiple results, a random one is selected from the search results.
-     - **`!stop`**: Stop the bot.
-     - **`!die`**: .
+     - **`!stop`**: Stop Audio playing.
+     - **`!die`**: temporary command to test command service restart (in this case only on bot commands task). 
 
 ### 4. **IRC Parsing**
    - Parse and process IRC messages for real-time communication.
