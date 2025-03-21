@@ -1,7 +1,10 @@
 
 # Bottarga
 
-Bottarga is a modular and extensible Rust-based project designed to handle asynchronous tasks, audio playback, bot commands, and more. It is built with a focus on efficiency, scalability, and ease of use.
+Bottarga is a simle Test to Speech bot for Twitch chat. 
+It can read chat messages and convert them to the voice.
+Can interact with Twitch Chat. And execute commands from chat.
+Command are predefined and can be extended. 
 
 ---
 
@@ -20,7 +23,7 @@ Bottarga is a modular and extensible Rust-based project designed to handle async
 
 ## Overview
 
-Bottarga is a multi-functional project that integrates various components to provide a robust framework for managing tasks, processing audio, handling bot commands, and interacting with external services like Twitch. It leverages asynchronous programming with [Tokio](https://tokio.rs/) to ensure high performance and scalability.
+Bottarga is a multi-functional project that integrates various components to provide a robust framework for managing tasks, processing audio, handling bot commands, and interacting with external services like Twitch. It leverages asynchronous programming with [Tokio](https:#tokio.rs/) to ensure high performance and scalability.
 
 ---
 
@@ -55,7 +58,7 @@ To set up Bottarga, follow these steps:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/icsboyx/bottarga.git
+   git clone https:#github.com/icsboyx/bottarga.git
    ```
 2. Navigate to the project directory:
    ```bash
@@ -151,20 +154,20 @@ The `BotSpeechConfig.toml` file contains default settings for the Bot Voice.
 
 ```toml
 [speech_config]
-// Name of the voice to use for text-to-speech
-// See the list in .config/VoiceDB.toml it static list of supported voices updated on each start
+# Name of the voice to use for text-to-speech
+# See the list in .config/VoiceDB.toml it static list of supported voices updated on each start
 voice_name = "Microsoft Server Speech Text to Speech Voice (it-IT, GiuseppeMultilingualNeural)"
 
-// Audio format for the generated TTS audio
+# Audio format for the generated TTS audio
 audio_format = "audio-24khz-48kbitrate-mono-mp3"
 
-// Pitch of the generated audio signed integer higher is higher lower is lower 0 is default
+# Pitch of the generated audio signed integer higher is higher lower is lower 0 is default
 pitch = 0
 
-// Rate of the generated audio signed integer higher is faster lower is slower 0 is default
+# Rate of the generated audio signed integer higher is faster lower is slower 0 is default
 rate = 0
 
-// Volume of the generated audio signed integer higher is louder lower is quieter 0 is default
+# Volume of the generated audio signed integer higher is louder lower is quieter 0 is default
 volume = 0
 ```
 
@@ -208,11 +211,12 @@ We welcome contributions to Bottarga!
 
 
 ## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
 
 
 
 ## Additional Resources
 
-- [Rust Documentation](https://doc.rust-lang.org/)
-- [Tokio Documentation](https://tokio.rs/)
-- [GitHub Repository](https://github.com/icsboyx/bottarga)
+- [Rust Documentation](https:#doc.rust-lang.org/)
+- [Tokio Documentation](https:#tokio.rs/)
+- [GitHub Repository](https:#github.com/icsboyx/bottarga)
