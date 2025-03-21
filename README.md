@@ -41,6 +41,15 @@ Bottarga is a multi-functional project that integrates various components to pro
 
 ### 3. **Bot Commands**
    - Process and execute bot commands for automation.
+   - Available commands:
+     - **`!help`**: Show help message and list all commands.
+     - **`!list_locales`**: Show list of supported locales for TTS.
+     - **`!reset_voice`**:  
+       > Reset voice to random if no arguments are provided.  
+       > If arguments are provided, a test search is applied on VoiceDB to find a voice.  
+       > In case of multiple results, a random one is selected from the search results.
+     - **`!stop`**: Stop the bot.
+     - **`!die`**: .
 
 ### 4. **IRC Parsing**
    - Parse and process IRC messages for real-time communication.
