@@ -265,6 +265,9 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
                     TTS_QUEUE.push_back(voice_msg(&line.payload, &line.sender).await).await;
                 }
             }
+            "PONG" => {
+                log_debug!("Received PONG from server");
+            }
             _ => {}
         }
     }

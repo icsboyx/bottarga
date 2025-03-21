@@ -63,8 +63,7 @@ macro_rules! log_write {
         let prefix = now!();
         let payload = format!($($arg)*);
         let padding = format!("{}{}","\n"," ".repeat(prefix.len() + 5));
-        let mut payload = payload.replace("\n", padding.as_ref());
-        if payload.as_str().contains("PASS oauth"){payload = "PASS oauth:[ ************* Sensitive Data Content ************* ]".to_string()};
+        let payload = payload.replace("\n", padding.as_ref());
         println!("| {} | {}", prefix, payload.color($color));
     }};
 }
@@ -134,7 +133,8 @@ macro_rules! log_debug {
     #[cfg(debug_assertions)]
         {
         use colored::Color::*;
-        let payload = format!($($arg)*);
+        let mut payload = format!($($arg)*);
+        if payload.as_str().contains("PASS oauth"){payload = "PASS oauth :[ ************* Sensitive Data Content ************* ]".to_string()};
         log_write!(Blue, "[DEBUG] {}", payload);
     }};
 }
