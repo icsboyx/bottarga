@@ -24,6 +24,9 @@ impl UsersDB {
         block_on(async { UsersDB::load(config_dir).await })
     }
 
+    // This will be called on bot start to preload all users
+    pub fn warm_up(&self) {}
+
     pub async fn add_new_user(&mut self, nick: impl AsRef<str>) -> User {
         let user = User::new(&nick);
         self.users.insert(nick.as_ref().into(), user.clone());

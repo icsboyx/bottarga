@@ -315,6 +315,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "colored",
+ "curl",
  "futures",
  "json_to_table",
  "kira",

@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::pin::Pin;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 use anyhow::{Error, Result};
 use tokio::sync::RwLock;
 
+use crate::bot_external_commands::ExternalBotCommands;
 use crate::irc_parser::IrcMessage;
 use crate::tts::{TTS_QUEUE, voice_msg};
 use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_BROADCAST, TWITCH_RECEIVER};
@@ -13,7 +14,11 @@ use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_BROADCAST, TW
 pub static BOT_COMMAND_PREFIX: &str = "!";
 
 pub static BOT_COMMANDS: LazyLock<BotCommands> = LazyLock::new(|| BotCommands::default());
-type BotCommandType = fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
+
+// pub type BotCommandType = fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
+// pub type BotCommandType = Arc<dyn Fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>>;
+pub type BotCommandType =
+    Arc<dyn Fn(IrcMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Sync + Send>> + Sync + Send>;
 
 #[derive(Default)]
 pub struct BotCommands {
@@ -42,16 +47,15 @@ pub async fn start() -> Result<()> {
     let mut test_broadcast_rx = TWITCH_BROADCAST.subscribe_broadcast().await;
 
     BOT_COMMANDS
-        .add_command("help", |irc_message| Box::pin(list_all_commands(irc_message)))
+        .add_command("help", Arc::new(|irc_message| Box::pin(list_all_commands(irc_message))))
         .await;
 
     BOT_COMMANDS
-        .add_command("test", |irc_message| Box::pin(test_command(irc_message)))
+        .add_command("die", Arc::new(|irc_message| Box::pin(die(irc_message))))
         .await;
 
-    BOT_COMMANDS
-        .add_command("die", |irc_message| Box::pin(die(irc_message)))
-        .await;
+    let ext_bot_commands = ExternalBotCommands::init();
+    ext_bot_commands.reg_ext_bot_cmd().await?;
 
     // Read all broadcasted commands from Twitch_client
     while let Ok(ret_val) = test_broadcast_rx.recv().await {
@@ -81,15 +85,6 @@ pub async fn die(_message: IrcMessage) -> Result<()> {
         .await;
     TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
     futures::future::err(Error::msg("I'm dying as you wish!")).await
-}
-
-pub async fn test_command(message: IrcMessage) -> Result<()> {
-    let ret_val = format!("Hi there {} this is the reply to your test message", message.sender);
-    TTS_QUEUE
-        .push_back(voice_msg(&ret_val, &TWITCH_BOT_INFO.nick_name().await).await)
-        .await;
-    TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
-    Ok(())
 }
 
 pub async fn list_all_commands(_message: IrcMessage) -> Result<()> {

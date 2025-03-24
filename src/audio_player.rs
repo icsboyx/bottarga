@@ -115,7 +115,7 @@ impl AudioPlayControl {
 
 pub async fn start() -> Result<()> {
     BOT_COMMANDS
-        .add_command("stop", |irc_message| Box::pin(stop_audio(irc_message)))
+        .add_command("stop", Arc::new(|irc_message| Box::pin(stop_audio(irc_message))))
         .await;
 
     while let Some(audio) = TTS_AUDIO_QUEUE.next().await {

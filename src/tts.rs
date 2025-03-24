@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use std::collections::HashSet;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 use anyhow::Result;
 use msedge_tts::tts::SpeechConfig;
@@ -22,17 +22,30 @@ pub static TTS_QUEUE: LazyLock<MSGQueue<TTSMassage>> = LazyLock::new(|| MSGQueue
 static TRANSFORM_CHARS: &[(char, &str)] = &[('&', "and"), ('%', "percent")];
 
 pub async fn start() -> Result<()> {
+    // This is calling the warm_up method on the USER_DB, to preload all users
+    USER_DB.read().await.warm_up();
+
+    // This is saving the TTS_VOCE_BD to the CONFIG_DIR, for user consultation
+    // Does not have real impact on the code.
     TTS_VOCE_BD.save(CONFIG_DIR).await;
+
+    // Registering the list_locales and reset_voice commands
     BOT_COMMANDS
-        .add_command("list_locales", |irc_message| {
-            Box::pin(tts_list_all_locales(irc_message))
-        })
+        .add_command(
+            "list_locales",
+            Arc::new(|irc_message| Box::pin(tts_list_all_locales(irc_message))),
+        )
         .await;
 
+    // Registering the reset_voice command
     BOT_COMMANDS
-        .add_command("reset_voice", |irc_message| Box::pin(tts_reset_voice(irc_message)))
+        .add_command(
+            "reset_voice",
+            Arc::new(|irc_message| Box::pin(tts_reset_voice(irc_message))),
+        )
         .await;
 
+    // This is the main loop for the TTS system, waiting for message.
     while let Some(tts_message) = TTS_QUEUE.next().await {
         text_to_speech(tts_message).await?;
     }

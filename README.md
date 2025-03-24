@@ -1,4 +1,4 @@
-<div style="text-align:center"><img src="assets/bottarga.png" /></div>
+<div style="text-align:center"><img src="assets/img/bottarga.png" /></div>
 
 # Bottarga
 
