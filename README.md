@@ -39,7 +39,17 @@ Bottarga is a multi-functional project that integrates various components to pro
    - Play, stop, and manage audio streams.
    - Notify and handle audio playback events.
 
-### 3. **Bot Commands**
+### 3. **Twitch Client**
+   - Interact with Twitch APIs and services for streaming and chat integration.
+
+### 4. **IRC Parsing**
+   - Parse and process IRC messages for real-time communication.
+
+### 5. **Text-to-Speech (TTS)**
+   - Generate and play TTS audio streams.
+
+
+### 6. **Bot Commands**
    - Process and execute bot commands for automation.
    - Available commands:
      - **`!help`**: Show help message and list all commands.
@@ -51,14 +61,8 @@ Bottarga is a multi-functional project that integrates various components to pro
      - **`!stop`**: Stop Audio playing.
      - **`!die`**: temporary command to test command service restart (in this case only on bot commands task). 
 
-### 4. **IRC Parsing**
-   - Parse and process IRC messages for real-time communication.
-
-### 5. **Text-to-Speech (TTS)**
-   - Generate and play TTS audio streams.
-
-### 6. **Twitch Client**
-   - Interact with Twitch APIs and services for streaming and chat integration.
+### 7.  **External Bot Commands**
+   - Process and execute external bot commands for automation, loaded from external config file.
 
 ---
 
@@ -195,6 +199,35 @@ rate = 0
 volume = 0
 ```
 
+The `ExternalBotCommands.toml` file contains External Bot Commands.\
+   - {ARGS} and {SENDER} variables can be used in the replay_text field.
+     - {ARGS} =>  This is the argument passed to the command.
+     - {SENDER} => This is the sender/requester of the command.
+     - custom_audio_url => id valid audio file, will always be reproduced before text reply. 
+
+   ```toml
+   [commands.test]
+   # Command name and activation pattern
+   activation_pattern = "test"
+   # Indicates if the command requires an argument
+   need_arg = false
+   # Custom audio URL or local file to play before the text reply
+   custom_audio_url = ""
+   # Text reply
+   replay_text = "Hi there {SENDER} this is the reply to your test command"
+
+   [commands.for_president]
+   activation_pattern = "for_president"
+   need_arg = true
+   custom_audio_url = ""
+   replay_text = "{ARG} for President!"
+
+   [commands.meow]
+   activation_pattern = "meow"
+   need_arg = false
+   custom_audio_url = "https://www.myinstants.com/media/sounds/m-e-o-w.mp3"
+   replay_text = ""
+```
 
 
 Ensure that the `.config` directory is writable by the application to allow for proper initialization and updates. In case of error loading the configuration, the application will fall back to default settings and run in memory mode. No persistent data will be saved.
