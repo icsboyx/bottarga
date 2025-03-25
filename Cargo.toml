@@ -1,6 +1,6 @@
 [package]
 name = "bottarga"
-version = "0.1.1"
+version = "0.1.0"
 edition = "2024"
 description = "Bottarga is a simle Text to Speech bot for Twitch chat. It can read chat messages and convert them to the voice. Can interact with Twitch Chat. And execute commands from chat. Command are predefined and can be extended."
 license-file = "LICENSE"
