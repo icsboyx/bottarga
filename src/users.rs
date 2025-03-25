@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::CONFIG_DIR;
-use crate::defs::PersistentConfig;
+use crate::common::PersistentConfig;
 use crate::tts::TTS_VOCE_BD;
 
 pub static USER_DB: LazyLock<RwLock<UsersDB>> = LazyLock::new(|| RwLock::new(UsersDB::init(CONFIG_DIR)));

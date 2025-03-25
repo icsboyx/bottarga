@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use tokio::task;
 
 use crate::bot_commands::BOT_COMMANDS;
-use crate::defs::MSGQueue;
+use crate::common::MSGQueue;
 use crate::irc_parser::IrcMessage;
 
 pub static TTS_AUDIO_QUEUE: LazyLock<MSGQueue<Vec<u8>>> = LazyLock::new(|| MSGQueue::new());

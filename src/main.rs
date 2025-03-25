@@ -1,7 +1,7 @@
 use anyhow::Result;
 use bot_external_commands::ExternalBotCommands;
 use task_manager::TASKS_MANAGER;
-pub mod defs;
+pub mod common;
 #[macro_use]
 pub mod macros;
 pub mod audio_player;

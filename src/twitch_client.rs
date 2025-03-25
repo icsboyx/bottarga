@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::bot_commands::BOT_COMMAND_PREFIX;
-use crate::defs::{BroadCastChannel, MSGQueue, PersistentConfig};
+use crate::common::{BroadCastChannel, MSGQueue, PersistentConfig};
 use crate::irc_parser::{IrcMessage, parse_message};
 use crate::tts::{TTS_QUEUE, TTS_VOCE_BD, voice_msg};
 use crate::{CONFIG_DIR, log};

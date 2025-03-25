@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::CONFIG_DIR;
 use crate::audio_player::TTS_AUDIO_QUEUE;
 use crate::bot_commands::BOT_COMMANDS;
-use crate::defs::{MSGQueue, PersistentConfig};
+use crate::common::{MSGQueue, PersistentConfig};
 use crate::irc_parser::IrcMessage;
 use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_RECEIVER};
 use crate::users::USER_DB;
