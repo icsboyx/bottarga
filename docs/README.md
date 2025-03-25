@@ -23,43 +23,43 @@ The main entry point of the application. It initializes the `TASKS_MANAGER` and 
 
 Manages the lifecycle of tasks, including adding, retrying, and monitoring them. Provides an interface for scheduling asynchronous tasks with retry mechanisms.
 
-- [Documentation](docs/task_manager.md)
+- [Documentation](task_manager.md)
 
 #### `src/audio_player.rs`
 
 Handles audio playback functionality. Includes methods to play, stop, and manage audio streams. It also integrates with the TTS module to play generated audio.
 
-- [Documentation](docs/audio_player.md)
+- [Documentation](audio_player.md)
 
 #### `src/bot_commands.rs`
 
 Processes bot commands received from Twitch chat or external sources. Includes predefined commands and supports extending functionality through external configuration.
 
-- [Documentation](docs/bot_commands.md)
+- [Documentation](bot_commands.md)
 
 #### `src/irc_parser.rs`
 
 Parses and processes IRC messages for real-time communication. It extracts relevant information from Twitch chat messages and passes them to the appropriate handlers.
 
-- [Documentation](docs/irc_parser.md)
+- [Documentation](irc_parser.md)
 
 #### `src/tts.rs`
 
 Implements text-to-speech functionality. Converts text messages into audio streams using the configured voice settings. Supports customization of pitch, rate, and volume.
 
-- [Documentation](docs/tts.md)
+- [Documentation](tts.md)
 
 #### `src/twitch_client.rs`
 
 Interacts with Twitch APIs and services. Manages the connection to Twitch chat, handles incoming messages, and sends responses when required.
 
-- [Documentation](docs/twitch_client.md)
+- [Documentation](twitch_client.md)
 
 #### `src/common.rs`
 
 Contains shared definitions, constants, and utility functions used across the project. Acts as a central location for reusable components and configurations.
 
-- [Documentation](docs/common.md)
+- [Documentation](common.md)
 
 ---
 
