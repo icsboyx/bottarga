@@ -50,9 +50,9 @@ pub async fn start() -> Result<()> {
         .add_command("help", Arc::new(|irc_message| Box::pin(list_all_commands(irc_message))))
         .await;
 
-    BOT_COMMANDS
-        .add_command("die", Arc::new(|irc_message| Box::pin(die(irc_message))))
-        .await;
+    // BOT_COMMANDS
+    //     .add_command("die", Arc::new(|irc_message| Box::pin(die(irc_message))))
+    //     .await;
 
     let ext_bot_commands = ExternalBotCommands::init();
     ext_bot_commands.reg_ext_bot_cmd().await?;
