@@ -62,10 +62,10 @@ The `BotCommands` struct manages the registration and execution of bot commands.
 - **Description**: A function that lists all registered commands.
 - **Details**: It retrieves all command triggers from the `BotCommands` registry and formats them for display.
 
-### `die`
+### `die` _(Note: This function is commented out in the code.)_
 
 - **Description**: A function that shuts down the bot with a farewell message.
-- **Details**: Sends a farewell message to the chat and terminates the bot's process. _(Note: This function is commented out in the code.)_
+- **Details**: Sends a farewell message to the chat and terminates the bot's process.
 
 ## Notes
 

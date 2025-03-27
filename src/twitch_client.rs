@@ -112,7 +112,7 @@ impl Default for TwitchConfig {
             auth_token: "1234567890".into(),
             irc_cap_req: vec![
                 "twitch.tv/commands".into(),
-                "twitch.tv/commands".into(),
+                "twitch.tv/membership".into(),
                 "twitch.tv/tags".into(),
             ],
             ping_interval: 180,

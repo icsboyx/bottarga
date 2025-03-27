@@ -21,7 +21,7 @@ pub static CONFIG_DIR: Option<&'static str> = Some(".config");
 async fn main() -> Result<()> {
     // Start the Twitch client
     TASKS_MANAGER
-        .add("Task01", || Box::pin(twitch_client::start()), 3)
+        .add("TWITCH_CLIENT", || Box::pin(twitch_client::start()), 3)
         .await;
     // Start the TTS client
     TASKS_MANAGER.add("TTS", || Box::pin(tts::start()), 3).await;

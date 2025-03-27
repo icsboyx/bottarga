@@ -146,7 +146,6 @@ To set up Bottarga, follow these steps:
    git clone https:#github.com/icsboyx/bottarga.git
    ```
 
-````
 
 2. Navigate to the project directory:
    ```bash
@@ -177,7 +176,7 @@ The main entry point of the application is defined in `src/main.rs`. The `TASKS_
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     TASKS_MANAGER
-        .add("Task01", || Box::pin(twitch_client::start()), 3)
+        .add("TWITCH_CLIENT", || Box::pin(twitch_client::start()), 3)
         .await;
 
     TASKS_MANAGER.add("TTS", || Box::pin(tts::start()), 3).await;
@@ -230,16 +229,24 @@ The `TwitchConfig.toml` file contains default settings for the Twitch integratio
 The default config is for anonymous login to twitch chat. Bot can only read chat messages and convert to the voice. With Anonymous login, bot can't send messages to chat.
 
 ```toml
+# The IRC server for Twitch chat.
 server = "irc.chat.twitch.tv"
-nick = "justinfan69696942"
-channel = "icsboyx"
+# Anonymous login nickname for Twitch chat.
+nick = "justinfan69696942" 
+# The Twitch channel to connect to.
+channel = "icsboyx" 
+# Authentication token for Twitch chat (use anonymous login token for read-only access, random string).
 auth_token = "1234567890"
+# Request Twitch-specific IRC tags capabilities. 
+# Request Twitch-specific IRC membership capabilities.
+# Request Twitch-specific IRC command capabilities.
 irc_cap_req = [
-    "twitch.tv/commands",
-    "twitch.tv/commands",
-    "twitch.tv/tags",
+    "twitch.tv/commands", 
+    "twitch.tv/membership",
+    "twitch.tv/tags" 
 ]
-ping_interval = 180
+# Interval in seconds to send PING messages to keep the connection alive.
+ping_interval = 180 
 ```
 
 The `BotSpeechConfig.toml` file contains default settings for the Bot Voice.
