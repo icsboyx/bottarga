@@ -1,5 +1,4 @@
 use anyhow::Result;
-use bot_external_commands::ExternalBotCommands;
 use task_manager::TASKS_MANAGER;
 pub mod common;
 #[macro_use]
@@ -34,8 +33,6 @@ async fn main() -> Result<()> {
         .add("BOT_COMMANDS", || Box::pin(bot_commands::start()), 3)
         .await;
 
-    let ret_val = ExternalBotCommands::init();
-    log_trace!("Test External Bot Command {:?}", ret_val);
     // List all tasks
     TASKS_MANAGER.list().await;
     // Start all tasks
