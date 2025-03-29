@@ -48,22 +48,26 @@ macro_rules! here {
 
 #[macro_export]
 macro_rules! log_write {
+    (None) => {{
+        let payload = format!("{} I'm here", here!());
+        let prefix = now!();
+        println!("| {} | {}", prefix, payload);
+    }};
+    (None, $($arg:tt)*) => {{
+        let payload = format!($($arg)*);
+        let prefix = now!();
+        println!("| {} | {}", prefix, payload);
+    }};
     ($color:expr) => {{
         use colored::Colorize;
-        let prefix = now!();
         let payload = format!("{} I'm here", here!());
-        let padding = format!("{}{}","\n"," ".repeat(prefix.len() + 5));
-        let payload = payload
-        let payload = payload.replace("\n", padding.as_ref());
-
+        let prefix = now!();
         println!("| {} | {}", prefix, payload.color($color));
     }};
-    ($color:expr,$($arg:tt)*) => {{
+    ($color:expr, $($arg:tt)*) => {{
         use colored::Colorize;
-        let prefix = now!();
         let payload = format!($($arg)*);
-        let padding = format!("{}{}","\n"," ".repeat(prefix.len() + 5));
-        let payload = payload.replace("\n", padding.as_ref());
+        let prefix = now!();
         println!("| {} | {}", prefix, payload.color($color));
     }};
 }
@@ -88,11 +92,10 @@ macro_rules! log_write_original {
 macro_rules! log {
     () => {{
         use colored::Color::White;
-        log_write!(White)
+        log_write!(None)
     }};
     ($($arg:tt)*) => {{
-        use colored::Color::White;
-        log_write!(White, $($arg)*)
+        log_write!(None, $($arg)*)
     }};
 }
 
