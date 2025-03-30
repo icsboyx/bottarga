@@ -14,7 +14,7 @@ use crate::audio_player::TTS_AUDIO_QUEUE;
 use crate::bot_commands::BOT_COMMANDS;
 use crate::common::{MSGQueue, PersistentConfig};
 use crate::irc_parser::IrcMessage;
-use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_RECEIVER};
+use crate::twitch_client::{TWITCH_BOT_INFO, TWITCH_RECEIVER};
 use crate::users::USER_DB;
 
 pub static TTS_VOCE_BD: LazyLock<VoiceDB> = LazyLock::new(|| VoiceDB::default());
@@ -224,7 +224,7 @@ pub async fn voice_msg(payload: &impl AsRef<str>, nick: &impl AsRef<str>) -> TTS
 
 pub async fn tts_list_all_locales(_message: IrcMessage) -> Result<()> {
     let ret_val = format!("Available locales: {}", TTS_VOCE_BD.list_all_locales().await.join(", "));
-    TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
+    TWITCH_RECEIVER.send_privmsg(ret_val).await;
     Ok(())
 }
 
@@ -250,6 +250,6 @@ pub async fn tts_reset_voice(message: IrcMessage) -> Result<()> {
     TTS_QUEUE
         .push_back(voice_msg(&payload, &TWITCH_BOT_INFO.nick_name().await).await)
         .await;
-    TWITCH_RECEIVER.push_back(payload.as_irc_privmsg().await).await;
+    TWITCH_RECEIVER.send_privmsg(payload).await;
     Ok(())
 }

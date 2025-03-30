@@ -1,5 +1,6 @@
+use std::collections::VecDeque;
 use std::fmt::Display;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use anyhow::{Result, anyhow};
@@ -19,23 +20,80 @@ use crate::{CONFIG_DIR, log};
 pub static TWITCH_BOT_INFO: LazyLock<TwitchBotInfo> = LazyLock::new(|| TwitchBotInfo::init());
 pub static TWITCH_BROADCAST: LazyLock<BroadCastChannel<IrcMessage>> =
     LazyLock::new(|| BroadCastChannel::<IrcMessage>::new(10));
-pub static TWITCH_RECEIVER: LazyLock<MSGQueue<Vec<String>>> = LazyLock::new(|| MSGQueue::new());
+pub static TWITCH_RECEIVER: LazyLock<TwitchReceiver> = LazyLock::new(|| TwitchReceiver::new());
 
 static TWITCH_MAX_MSG_LINE_LENGTH: usize = 400;
 
-pub(crate) trait IntoIrcPRIVMSG {
-    async fn as_irc_privmsg(&self) -> Vec<String>
-    where
-        Self: Display + AsRef<str>,
-    {
-        split_lines(self).await.fold(Vec::<String>::new(), |mut lines, line| {
-            lines.push(block_on(async {
-                format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel().await, line)
-            }));
-            lines
-        })
+pub struct TwitchReceiver {
+    queue: RwLock<VecDeque<String>>,
+    notify: Arc<tokio::sync::Notify>,
+}
+
+impl TwitchReceiver {
+    pub fn new() -> Self {
+        Self {
+            queue: RwLock::new(VecDeque::new()),
+            notify: Arc::new(tokio::sync::Notify::new()),
+        }
+    }
+
+    pub async fn recv(&self) -> Option<String> {
+        loop {
+            let mut queue = self.queue.write().await;
+            if let Some(msg) = queue.pop_front() {
+                return Some(msg);
+            }
+            drop(queue);
+            self.notify.notified().await;
+        }
+    }
+
+    pub async fn send_raw(&self, payload: impl AsRef<str>) {
+        self.queue.write().await.push_back(payload.as_ref().into());
+        self.notify.notify_waiters();
+    }
+
+    pub async fn send_privmsg(&self, message: impl AsRef<str>) {
+        for line in split_lines(message)
+            .await
+            .fold(Vec::<String>::new(), |mut lines, line| {
+                lines.push(block_on(async {
+                    format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel().await, line)
+                }));
+                lines
+            })
+        {
+            self.queue.write().await.push_back(line);
+        }
+        self.notify.notify_waiters();
+    }
+
+    pub async fn send_whisper(&self, message: impl AsRef<str>, receiver: impl AsRef<str>) {
+        for line in split_lines(message)
+            .await
+            .fold(Vec::<String>::new(), |mut lines, line| {
+                lines.push(format!("WHISPER {} :{}", receiver.as_ref(), line));
+                lines
+            })
+        {
+            self.queue.write().await.push_back(line);
+        }
+        self.notify.notify_waiters();
     }
 }
+// pub(crate) trait IntoIrcPRIVMSG {
+//     async fn as_irc_privmsg(&self) -> Vec<String>
+//     where
+//         Self: Display + AsRef<str>,
+//     {
+//         split_lines(self).await.fold(Vec::<String>::new(), |mut lines, line| {
+//             lines.push(block_on(async {
+//                 format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel().await, line)
+//             }));
+//             lines
+//         })
+//     }
+// }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BotSpeechConfig {
@@ -180,12 +238,10 @@ pub async fn start() -> Result<()> {
                 }
             }
 
-            Some(ret_val) = TWITCH_RECEIVER.next() => {
-                for line in ret_val {
-                    log_debug!("SENDING: {:?}", line);
-                let _ = write.send(line.to_ws_text()).await;
-            }
+            Some(ret_val) = TWITCH_RECEIVER.recv() => {
 
+                    log_debug!("SENDING: {:?}", ret_val);
+                let _ = write.send(ret_val.to_ws_text()).await;
             }
 
 
@@ -197,16 +253,17 @@ pub async fn start() -> Result<()> {
 }
 
 async fn twitch_auth(config: &TwitchConfig) -> Result<()> {
-    let mut auth = vec![
-        format!("PASS oauth:{}", config.auth_token),
-        format!("NICK {}", config.nick),
-    ];
-    for cap in &config.irc_cap_req {
-        auth.push(format!("CAP REQ :{}", cap));
-    }
-    auth.push(format!("JOIN #{}", config.channel));
+    TWITCH_RECEIVER
+        .send_raw(format!("PASS oauth:{}", config.auth_token))
+        .await;
 
-    TWITCH_RECEIVER.push_back(auth).await;
+    TWITCH_RECEIVER.send_raw(format!("NICK {}", config.nick)).await;
+
+    for cap in &config.irc_cap_req {
+        TWITCH_RECEIVER.send_raw(format!("CAP REQ :{}", cap)).await;
+    }
+
+    TWITCH_RECEIVER.send_raw(format!("JOIN #{}", config.channel)).await;
 
     Ok(())
 }
@@ -241,9 +298,7 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
         match line.command.as_str() {
             "PING" => {
                 log_debug!("Replying to Server Ping");
-                TWITCH_RECEIVER
-                    .push_back([format!("PONG :{}", line.payload)].to_vec())
-                    .await;
+                TWITCH_RECEIVER.send_raw(format!("PONG :{}", line.payload)).await;
             }
             "PRIVMSG" if line.payload == "!die" => {
                 log_error!("I'm dying cruel world");
@@ -268,7 +323,9 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
             "PONG" => {
                 log_debug!("Received PONG from server");
             }
-            _ => {}
+            _ => {
+                log_trace!("Received unknown message: {:?}", line);
+            }
         }
     }
 

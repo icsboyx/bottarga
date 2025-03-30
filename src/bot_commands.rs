@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::pin::Pin;
 use std::sync::{Arc, LazyLock};
 
@@ -9,7 +8,7 @@ use tokio::sync::RwLock;
 use crate::bot_external_commands::ExternalBotCommands;
 use crate::irc_parser::IrcMessage;
 use crate::tts::{TTS_QUEUE, voice_msg};
-use crate::twitch_client::{IntoIrcPRIVMSG, TWITCH_BOT_INFO, TWITCH_BROADCAST, TWITCH_RECEIVER};
+use crate::twitch_client::{TWITCH_BOT_INFO, TWITCH_BROADCAST, TWITCH_RECEIVER};
 
 pub static BOT_COMMAND_PREFIX: &str = "!";
 
@@ -76,16 +75,14 @@ pub async fn start() -> Result<()> {
     Ok(())
 }
 
-impl<T: Display> IntoIrcPRIVMSG for T {}
-
-pub async fn die(_message: IrcMessage) -> Result<()> {
-    let ret_val = "Goodbye cruel world";
-    TTS_QUEUE
-        .push_back(voice_msg(&ret_val, &TWITCH_BOT_INFO.nick_name().await).await)
-        .await;
-    TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
-    futures::future::err(Error::msg("I'm dying as you wish!")).await
-}
+// pub async fn die(_message: IrcMessage) -> Result<()> {
+//     let ret_val = "Goodbye cruel world";
+//     TTS_QUEUE
+//         .push_back(voice_msg(&ret_val, &TWITCH_BOT_INFO.nick_name().await).await)
+//         .await;
+//     TWITCH_RECEIVER.send_privmsg(ret_val).await;
+//     futures::future::err(Error::msg("I'm dying as you wish!")).await
+// }
 
 pub async fn list_all_commands(_message: IrcMessage) -> Result<()> {
     let triggers = BOT_COMMANDS
@@ -101,6 +98,6 @@ pub async fn list_all_commands(_message: IrcMessage) -> Result<()> {
     TTS_QUEUE
         .push_back(voice_msg(&ret_val, &TWITCH_BOT_INFO.nick_name().await).await)
         .await;
-    TWITCH_RECEIVER.push_back(ret_val.as_irc_privmsg().await).await;
+    TWITCH_RECEIVER.send_privmsg(ret_val).await;
     Ok(())
 }
