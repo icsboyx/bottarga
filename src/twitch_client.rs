@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::fmt::Display;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
@@ -12,7 +11,7 @@ use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::bot_commands::BOT_COMMAND_PREFIX;
-use crate::common::{BroadCastChannel, MSGQueue, PersistentConfig};
+use crate::common::{BroadCastChannel, PersistentConfig};
 use crate::irc_parser::{IrcMessage, parse_message};
 use crate::tts::{TTS_QUEUE, TTS_VOCE_BD, voice_msg};
 use crate::{CONFIG_DIR, log};
@@ -324,7 +323,7 @@ async fn handle_twitch_msg(text: impl AsRef<str>) -> Result<()> {
                 log_debug!("Received PONG from server");
             }
             _ => {
-                log_trace!("Received unknown message: {:?}", line);
+                // log_trace!("{:?}", line);
             }
         }
     }
