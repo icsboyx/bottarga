@@ -15,7 +15,7 @@ use crate::bot_commands::BOT_COMMANDS;
 use crate::common::{MSGQueue, PersistentConfig};
 use crate::irc_parser::IrcMessage;
 use crate::twitch_client::{TWITCH_BOT_INFO, TWITCH_RECEIVER};
-use crate::users::USER_DB;
+use crate::users::{USER_DB, USER_DEFAULT_VOICE_CONFIG};
 
 pub static TTS_VOCE_BD: LazyLock<VoiceDB> = LazyLock::new(|| VoiceDB::default());
 pub static TTS_QUEUE: LazyLock<MSGQueue<TTSMassage>> = LazyLock::new(|| MSGQueue::new());
@@ -24,6 +24,7 @@ static TRANSFORM_CHARS: &[(char, &str)] = &[('&', "and"), ('%', "percent")];
 pub async fn start() -> Result<()> {
     // This is calling the warm_up method on the USER_DB, to preload all users
     USER_DB.read().await.warm_up();
+    USER_DEFAULT_VOICE_CONFIG.warm_up();
 
     // This is saving the TTS_VOCE_BD to the CONFIG_DIR, for user consultation
     // Does not have real impact on the code.

@@ -11,6 +11,8 @@ use crate::common::PersistentConfig;
 use crate::tts::TTS_VOCE_BD;
 
 pub static USER_DB: LazyLock<RwLock<UsersDB>> = LazyLock::new(|| RwLock::new(UsersDB::init(CONFIG_DIR)));
+pub static USER_DEFAULT_VOICE_CONFIG: LazyLock<UserDefaultVoiceConfig> =
+    LazyLock::new(|| UserDefaultVoiceConfig::init(CONFIG_DIR));
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct UsersDB {
@@ -72,11 +74,41 @@ impl User {
     pub fn new(nick: impl AsRef<str>) -> Self {
         Self {
             nick: nick.as_ref().into(),
-            speech_config: TTS_VOCE_BD.filter_voices_by_text(&["it-IT"]).random().into(),
+            speech_config: TTS_VOCE_BD
+                .filter_voices_by_text(&[USER_DEFAULT_VOICE_CONFIG
+                    .filter
+                    .clone()
+                    .unwrap_or("".to_string())
+                    .as_str()])
+                .random()
+                .into(),
         }
     }
 
     pub fn get_speech_config(&self) -> &SpeechConfig {
         &self.speech_config
     }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct UserDefaultVoiceConfig {
+    filter: Option<String>,
+}
+
+impl Default for UserDefaultVoiceConfig {
+    fn default() -> Self {
+        Self {
+            filter: Some("multilingual".into()),
+        }
+    }
+}
+
+impl PersistentConfig for UserDefaultVoiceConfig {}
+
+impl UserDefaultVoiceConfig {
+    pub fn init(config_dir: Option<&str>) -> Self {
+        block_on(async { UserDefaultVoiceConfig::load(config_dir).await })
+    }
+
+    pub fn warm_up(&self) {}
 }

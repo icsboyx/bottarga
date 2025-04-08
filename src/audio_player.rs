@@ -28,7 +28,7 @@ use crate::irc_parser::IrcMessage;
 
 pub static TTS_AUDIO_QUEUE: LazyLock<MSGQueue<Vec<u8>>> = LazyLock::new(|| MSGQueue::new());
 pub static TTS_AUDIO_CONTROL: LazyLock<AudioPlayControl> = LazyLock::new(|| AudioPlayControl::new());
-pub static AUDIO_CONTROL: LazyLock<AudioControl> = LazyLock::new(|| AudioControl::init());
+pub static AUDIO_CONTROL: LazyLock<AudioControl> = LazyLock::new(|| AudioControl::init(CONFIG_DIR));
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioControl {
@@ -42,9 +42,11 @@ impl Default for AudioControl {
 }
 
 impl AudioControl {
-    pub fn init() -> Self {
-        block_on(async { AudioControl::load(CONFIG_DIR).await })
+    pub fn init(config_dir: Option<&str>) -> Self {
+        block_on(async { AudioControl::load(config_dir).await })
     }
+
+    pub fn warm_up(&self) {}
 }
 
 impl PersistentConfig for AudioControl {}
@@ -138,7 +140,7 @@ impl AudioPlayControl {
 
 pub async fn start() -> Result<()> {
     // Warm up the AUDIO_CONTROL
-    let _ = AUDIO_CONTROL.volume;
+    AUDIO_CONTROL.warm_up();
     BOT_COMMANDS
         .add_command("stop", Arc::new(|irc_message| Box::pin(stop_audio(irc_message))))
         .await;
