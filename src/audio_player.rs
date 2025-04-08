@@ -4,8 +4,9 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use anyhow::Result;
+use futures::executor::block_on;
 use kira::sound::static_sound::StaticSoundData;
-use kira::{AudioManager, AudioManagerSettings, DefaultBackend};
+use kira::{AudioManager, AudioManagerSettings, DefaultBackend, Tween};
 // compile this only for linux
 #[cfg(target_os = "linux")]
 use psimple::Simple;
@@ -16,15 +17,37 @@ use pulse::sample::{Format, Spec};
 #[cfg(target_os = "linux")]
 use pulse::stream::Direction;
 use rodio::Decoder;
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tokio::task;
 
+use crate::CONFIG_DIR;
 use crate::bot_commands::BOT_COMMANDS;
-use crate::common::MSGQueue;
+use crate::common::{MSGQueue, PersistentConfig};
 use crate::irc_parser::IrcMessage;
 
 pub static TTS_AUDIO_QUEUE: LazyLock<MSGQueue<Vec<u8>>> = LazyLock::new(|| MSGQueue::new());
 pub static TTS_AUDIO_CONTROL: LazyLock<AudioPlayControl> = LazyLock::new(|| AudioPlayControl::new());
+pub static AUDIO_CONTROL: LazyLock<AudioControl> = LazyLock::new(|| AudioControl::init());
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AudioControl {
+    volume: f32,
+}
+
+impl Default for AudioControl {
+    fn default() -> Self {
+        Self { volume: -6.0 }
+    }
+}
+
+impl AudioControl {
+    pub fn init() -> Self {
+        block_on(async { AudioControl::load(CONFIG_DIR).await })
+    }
+}
+
+impl PersistentConfig for AudioControl {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PlayerCommands {
@@ -114,6 +137,8 @@ impl AudioPlayControl {
 // }
 
 pub async fn start() -> Result<()> {
+    // Warm up the AUDIO_CONTROL
+    let _ = AUDIO_CONTROL.volume;
     BOT_COMMANDS
         .add_command("stop", Arc::new(|irc_message| Box::pin(stop_audio(irc_message))))
         .await;
@@ -211,7 +236,8 @@ pub async fn stop_audio(_message: IrcMessage) -> Result<()> {
 pub async fn play_on_kira(audio: Vec<u8>) -> Result<()> {
     let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())?;
     let sound_data = StaticSoundData::from_cursor(Cursor::new(audio))?;
-    let sound = manager.play(sound_data.clone())?;
+    let mut sound = manager.play(sound_data.clone())?;
+    sound.set_volume(AUDIO_CONTROL.volume, Tween::default());
     TTS_AUDIO_CONTROL.busy().await;
     while TTS_AUDIO_CONTROL.status().await != PlayerCommands::Stop
         && sound.state() == kira::sound::PlaybackState::Playing
