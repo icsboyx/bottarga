@@ -33,11 +33,15 @@ pub static AUDIO_CONTROL: LazyLock<AudioControl> = LazyLock::new(|| AudioControl
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioControl {
     volume: f32,
+    linux_sink: Option<String>,
 }
 
 impl Default for AudioControl {
     fn default() -> Self {
-        Self { volume: -6.0 }
+        Self {
+            volume: -6.0,
+            linux_sink: None,
+        }
     }
 }
 
@@ -105,39 +109,6 @@ impl AudioPlayControl {
     }
 }
 
-// #[derive(Clone)]
-// // compile this only for linux
-// #[cfg(target_os = "linux")]
-// pub struct AudioPlayer {
-//     output_stream: Arc<RwLock<OutputStream>>,
-//     output_stream_handle: Arc<RwLock<OutputStreamHandle>>,
-//     sink: Arc<RwLock<Sink>>,
-// }
-
-// // compile this only for linux
-// #[cfg(target_os = "linux")]
-// impl AudioPlayer {
-//     pub fn new() -> Result<Self> {
-//         let (output_stream, output_stream_handle) = OutputStream::try_default()?;
-//         let sink = Sink::try_new(&output_stream_handle)?;
-//         Ok(Self {
-//             output_stream: Arc::new(RwLock::new(output_stream)),
-//             output_stream_handle: Arc::new(RwLock::new(output_stream_handle)),
-//             sink: Arc::new(RwLock::new(sink)),
-//         })
-//     }
-
-//     pub async fn add_audio(&self, audio: Vec<u8>) {
-//         let cursor = Cursor::new(audio);
-//         let source = Decoder::new(cursor).unwrap();
-//         self.sink.write().await.append(source);
-//     }
-
-//     pub async fn play(&self) {
-//         self.sink.read().await.sleep_until_end();
-//     }
-// }
-
 pub async fn start() -> Result<()> {
     // Warm up the AUDIO_CONTROL
     AUDIO_CONTROL.warm_up();
@@ -146,43 +117,23 @@ pub async fn start() -> Result<()> {
         .await;
 
     while let Some(audio) = TTS_AUDIO_QUEUE.next().await {
+        #[cfg(target_os = "linux")]
+        if let Some(sink) = &AUDIO_CONTROL.linux_sink {
+            tokio::spawn(play_on_sink(audio.clone(), sink)).await??;
+            return Ok(());
+        } else {
+            tokio::spawn(play_on_kira(audio.clone())).await??;
+            return Ok(());
+        }
         tokio::spawn(play_on_kira(audio)).await??;
     }
 
     Ok(())
 }
 
-// pub async fn play_audio(audio: Vec<u8>) -> Result<()> {
-//     use std::io::Cursor;
-
-//     use rodio::{Decoder, Sink};
-
-//     let cursor = Cursor::new(audio);
-//     let source = Decoder::new(cursor)?;
-
-//     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-//     let sink = Sink::try_new(&stream_handle).unwrap();
-//     sink.append(source);
-//     loop {
-//         {
-//             let stop = TTS_AUDIO_STOP.read().await;
-//             if *stop {
-//                 log_trace!("TTS_AUDIO_STOP is true, stopping audio");
-//                 break;
-//             }
-//         }
-//         sleep(Duration::from_millis(100)).await; // Check every 100ms
-//     }
-
-//     sink.stop();
-//     log_trace!("Audio stopped manually");
-//     Ok(())
-// }
-
-// compile this only for linux
 #[cfg(target_os = "linux")]
 
-pub async fn play_on_bot(audio: Vec<u8>) -> Result<()> {
+pub async fn play_on_sink(audio: Vec<u8>, sink: impl AsRef<str>) -> Result<()> {
     let cursor = Cursor::new(audio);
     let source = Decoder::new(cursor)?;
 
@@ -199,7 +150,7 @@ pub async fn play_on_bot(audio: Vec<u8>) -> Result<()> {
         None,                // Use the default server
         "botox",             // Our application’s name
         Direction::Playback, // We want a playback stream
-        Some("BOT.capture"), // Use the default device if failed
+        Some(sink.as_ref()), // Use the default device if failed
         "botox tts",         // Description of our stream
         &spec,               // Our sample format
         None,                // Use default channel map
