@@ -91,7 +91,7 @@ pub(crate) trait PersistentConfig {
             }
             Err(e) => {
                 log_error!("Unable to read file: {}. Error: {}", file_path.display(), e);
-                log_warning!("Proceeding in-memory only, config will not be persistent.");
+                log_warning!("Trying to create default config.");
                 let ret_val = Self::default();
                 ret_val.save(config_dir).await;
                 ret_val
