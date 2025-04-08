@@ -1,4 +1,4 @@
-use anyhow::Result;
+use eyre::Result;
 use task_manager::TASKS_MANAGER;
 pub mod common;
 #[macro_use]

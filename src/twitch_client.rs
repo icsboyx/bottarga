@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use eyre::{Result, anyhow};
 use futures::executor::block_on;
 use futures::{SinkExt, StreamExt, pin_mut};
 use msedge_tts::tts::SpeechConfig;

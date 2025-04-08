@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::Result;
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use tokio::fs::{self, create_dir_all, metadata};
 use tokio::sync::RwLock;
@@ -56,7 +56,7 @@ pub(crate) trait PersistentConfig {
                     Ok(_) => log!("Parent directory created successfully"),
                     Err(e) => {
                         log_error!("Failed to create parent directory: {}", e);
-                        return Err(anyhow::anyhow!("Failed to create parent directory: {}", e));
+                        return Err(e.into());
                     }
                 }
             }

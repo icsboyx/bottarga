@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::Result;
+use eyre::Result;
 
 use crate::task_manager::TASKS_MANAGER;
 

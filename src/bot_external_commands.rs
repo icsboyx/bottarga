@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::Result;
 use curl::easy::Easy;
+use eyre::Result;
 use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
 

@@ -2,7 +2,7 @@
 use std::collections::HashSet;
 use std::sync::{Arc, LazyLock};
 
-use anyhow::Result;
+use eyre::Result;
 use msedge_tts::tts::SpeechConfig;
 use msedge_tts::voice::{Voice, get_voices_list};
 use rand::Rng;

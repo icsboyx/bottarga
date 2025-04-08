@@ -9,7 +9,6 @@ repository = "https://github.com/icsboyx/bottarga"
 
 [dependencies]
 colored = { version = "3.0.0" }
-anyhow = "1.0.96"
 futures = "0.3.31"
 tokio = { version = "1.43.0", features = [
   "rt-multi-thread",
@@ -35,6 +34,7 @@ rodio = "0.20.1"
 regex = "1.11.1"
 kira = "0.10.4"
 curl = "0.4.47"
+eyre = "0.6.12"
 
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]

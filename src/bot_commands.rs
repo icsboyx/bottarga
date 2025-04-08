@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::{Arc, LazyLock};
 
-use anyhow::{Error, Result};
+use eyre::{Error, Result};
 use tokio::sync::RwLock;
 
 use crate::bot_external_commands::ExternalBotCommands;

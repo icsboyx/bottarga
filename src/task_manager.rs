@@ -3,7 +3,7 @@ use std::pin::Pin;
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use anyhow::{Error, Result};
+use eyre::{Error, Result};
 use futures::executor::block_on;
 use futures::stream::StreamExt;
 use futures::{pin_mut, stream};

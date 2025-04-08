@@ -3,7 +3,7 @@ use std::sync::{Arc, LazyLock};
 use std::thread::sleep;
 use std::time::Duration;
 
-use anyhow::Result;
+use eyre::Result;
 use futures::executor::block_on;
 use kira::sound::static_sound::StaticSoundData;
 use kira::{AudioManager, AudioManagerSettings, DefaultBackend, Tween};
