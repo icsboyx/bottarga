@@ -146,15 +146,21 @@ pub async fn start() -> Result<()> {
 pub async fn play_on_sink(audio: Vec<u8>, sink: impl AsRef<str>) -> Result<()> {
     use std::sync::Arc;
 
+    use rodio::Source;
+
     let cursor = Cursor::new(audio);
-    let source = Decoder::new(cursor)?;
+    let source = Decoder::new(cursor)?.convert_samples::<f32>();
+    let sample_rate = source.sample_rate();
+    let channels = source.channels() as u8;
+
+    log_trace!("Sample rate: {}, channels {}.", sample_rate, channels);
 
     // let (_stream, stream_handle) = OutputStream::try_default().unwrap();
 
     let spec = Spec {
-        format: Format::S16le,
-        channels: 1,
-        rate: 24000,
+        format: Format::FLOAT32NE,
+        channels,
+        rate: sample_rate,
     };
     assert!(spec.is_valid());
 
