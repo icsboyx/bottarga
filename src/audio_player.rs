@@ -112,7 +112,10 @@ pub async fn start() -> Result<()> {
     // Warm up the AUDIO_CONTROL
     AUDIO_CONTROL.warm_up();
     BOT_COMMANDS
-        .add_command("stop", Arc::new(|irc_message| Box::pin(stop_audio(irc_message))))
+        .add_command(
+            "stop",
+            Arc::new(|irc_message| Box::pin(bot_cmd_stop_audio(irc_message))),
+        )
         .await;
 
     while let Some(audio) = TTS_AUDIO_QUEUE.next().await {
@@ -192,35 +195,7 @@ pub async fn play_on_sink(audio: Vec<u8>, sink: impl AsRef<str>) -> Result<()> {
     Ok(())
 }
 
-// sink.write(&audio).unwrap();
-// sink.write(&audio).unwrap();
-// sink.drain().unwrap();
-// let sink_arc = Arc::new(sink);
-// let sink_arc_play = sink_arc.clone();
-// let sink_arc_control = sink_arc.clone();
-
-// task::spawn(async move {
-//     sink_arc_play.write(&audio).unwrap();
-// });
-// println!("##################################");
-
-// tokio::select! {
-//     _ = task::spawn_blocking(move || sink_arc_play.write(&audio).unwrap()) => {log_trace!("Exiting form tokio select")}
-//     _ = tokio::time::sleep(tokio::time::Duration::from_secs(3)) => {
-//         log_trace!("Timeout drain");
-//         drop(sink_arc_control);
-//     }
-// };
-
-// TTS_AUDIO_CONTROL.busy().await;
-// while TTS_AUDIO_CONTROL.status().await != PlayerCommands::Stop
-//     && sound.state() == kira::sound::PlaybackState::Playing
-// {
-//     sleep(Duration::from_millis(100));
-// }
-// TTS_AUDIO_CONTROL.ready().await;
-
-pub async fn stop_audio(_message: IrcMessage) -> Result<()> {
+pub async fn bot_cmd_stop_audio(_message: IrcMessage) -> Result<()> {
     TTS_AUDIO_CONTROL.stop().await;
     Ok(())
 }
@@ -239,14 +214,3 @@ pub async fn play_on_kira(audio: Vec<u8>) -> Result<()> {
     TTS_AUDIO_CONTROL.ready().await;
     Ok(())
 }
-
-// // compile this only for linux
-// #[cfg(target_os = "linux")]
-// pub async fn play_audio(audio: Vec<u8>) -> Result<()> {
-//     let player = AudioPlayer::new()?;
-//     player.add_audio(audio).await;
-
-//     while TTS_AUDIO_CONTROL.status().await != PlayerCommands::Stop {}
-//     TTS_AUDIO_CONTROL.ready().await;
-//     Ok(())
-// }

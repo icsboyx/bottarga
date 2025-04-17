@@ -46,7 +46,10 @@ pub async fn start() -> Result<()> {
     let mut test_broadcast_rx = TWITCH_BROADCAST.subscribe_broadcast().await;
 
     BOT_COMMANDS
-        .add_command("help", Arc::new(|irc_message| Box::pin(list_all_commands(irc_message))))
+        .add_command(
+            "help",
+            Arc::new(|irc_message| Box::pin(bot_cmd_list_all_commands(irc_message))),
+        )
         .await;
 
     // BOT_COMMANDS
@@ -75,16 +78,7 @@ pub async fn start() -> Result<()> {
     Ok(())
 }
 
-// pub async fn die(_message: IrcMessage) -> Result<()> {
-//     let ret_val = "Goodbye cruel world";
-//     TTS_QUEUE
-//         .push_back(voice_msg(&ret_val, &TWITCH_BOT_INFO.nick_name().await).await)
-//         .await;
-//     TWITCH_RECEIVER.send_privmsg(ret_val).await;
-//     futures::future::err(Error::msg("I'm dying as you wish!")).await
-// }
-
-pub async fn list_all_commands(_message: IrcMessage) -> Result<()> {
+pub async fn bot_cmd_list_all_commands(_message: IrcMessage) -> Result<()> {
     let triggers = BOT_COMMANDS
         .commands
         .read()

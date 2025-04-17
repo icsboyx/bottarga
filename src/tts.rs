@@ -34,7 +34,7 @@ pub async fn start() -> Result<()> {
     BOT_COMMANDS
         .add_command(
             "list_locales",
-            Arc::new(|irc_message| Box::pin(tts_list_all_locales(irc_message))),
+            Arc::new(|irc_message| Box::pin(bot_cmd_tts_list_all_locales(irc_message))),
         )
         .await;
 
@@ -42,7 +42,7 @@ pub async fn start() -> Result<()> {
     BOT_COMMANDS
         .add_command(
             "reset_voice",
-            Arc::new(|irc_message| Box::pin(tts_reset_voice(irc_message))),
+            Arc::new(|irc_message| Box::pin(bot_cmd_tts_reset_voice(irc_message))),
         )
         .await;
 
@@ -223,13 +223,13 @@ pub async fn voice_msg(payload: &impl AsRef<str>, nick: &impl AsRef<str>) -> TTS
     }
 }
 
-pub async fn tts_list_all_locales(_message: IrcMessage) -> Result<()> {
+pub async fn bot_cmd_tts_list_all_locales(_message: IrcMessage) -> Result<()> {
     let ret_val = format!("Available locales: {}", TTS_VOCE_BD.list_all_locales().await.join(", "));
     TWITCH_RECEIVER.send_privmsg(ret_val).await;
     Ok(())
 }
 
-pub async fn tts_reset_voice(message: IrcMessage) -> Result<()> {
+pub async fn bot_cmd_tts_reset_voice(message: IrcMessage) -> Result<()> {
     let nick = message.sender;
     let filter = &message.payload.split_whitespace().collect::<Vec<_>>()[1..];
     USER_DB
