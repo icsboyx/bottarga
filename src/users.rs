@@ -23,7 +23,7 @@ impl PersistentConfig for UsersDB {}
 
 impl UsersDB {
     pub fn init(config_dir: Option<&str>) -> UsersDB {
-        block_on(async { UsersDB::load(config_dir).await })
+        block_on(UsersDB::load(config_dir))
     }
 
     // This will be called on bot start to preload all users
@@ -107,7 +107,7 @@ impl PersistentConfig for UserDefaultVoiceConfig {}
 
 impl UserDefaultVoiceConfig {
     pub fn init(config_dir: Option<&str>) -> Self {
-        block_on(async { UserDefaultVoiceConfig::load(config_dir).await })
+        block_on(UserDefaultVoiceConfig::load(config_dir))
     }
 
     pub fn warm_up(&self) {}

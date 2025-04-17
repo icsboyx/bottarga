@@ -6,7 +6,7 @@ use std::time::Duration;
 use eyre::Result;
 use futures::executor::block_on;
 use kira::sound::static_sound::StaticSoundData;
-use kira::{AudioManager, AudioManagerSettings, DefaultBackend, Tween};
+use kira::{AudioManager, AudioManagerSettings, DefaultBackend};
 // compile this only for linux
 #[cfg(target_os = "linux")]
 use psimple::Simple;
@@ -19,7 +19,6 @@ use pulse::stream::Direction;
 use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use tokio::task;
 
 use crate::CONFIG_DIR;
 use crate::bot_commands::BOT_COMMANDS;
@@ -47,7 +46,7 @@ impl Default for AudioControl {
 
 impl AudioControl {
     pub fn init(config_dir: Option<&str>) -> Self {
-        block_on(async { AudioControl::load(config_dir).await })
+        block_on(AudioControl::load(config_dir))
     }
 
     pub fn warm_up(&self) {}
@@ -119,12 +118,21 @@ pub async fn start() -> Result<()> {
     while let Some(audio) = TTS_AUDIO_QUEUE.next().await {
         #[cfg(target_os = "linux")]
         if let Some(sink) = &AUDIO_CONTROL.linux_sink {
-            tokio::spawn(play_on_sink(audio.clone(), sink)).await??;
-            return Ok(());
+            match tokio::spawn(play_on_sink(audio.clone(), sink)).await {
+                Ok(Ok(())) => {
+                    log_debug!("Audio played on sink: {}", sink);
+                }
+                Ok(Err(e)) => {
+                    log_error!("Error playing audio on sink: {}", e);
+                }
+                Err(e) => {
+                    log_error!("Error playing audio on sink: {}", e);
+                }
+            }
         } else {
             tokio::spawn(play_on_kira(audio.clone())).await??;
-            return Ok(());
         }
+        #[cfg(not(target_os = "linux"))]
         tokio::spawn(play_on_kira(audio)).await??;
     }
 
@@ -132,8 +140,9 @@ pub async fn start() -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-
 pub async fn play_on_sink(audio: Vec<u8>, sink: impl AsRef<str>) -> Result<()> {
+    use std::sync::Arc;
+
     let cursor = Cursor::new(audio);
     let source = Decoder::new(cursor)?;
 
@@ -163,23 +172,53 @@ pub async fn play_on_sink(audio: Vec<u8>, sink: impl AsRef<str>) -> Result<()> {
         .iter()
         .flat_map(|&x| x.to_le_bytes().to_vec())
         .collect::<Vec<_>>();
-    log_trace!("Timeout drain");
-    // sink.write(&audio).unwrap();
-    // sink.write(&audio).unwrap();
-    // sink.drain().unwrap();
-    let sink_arc = Arc::new(sink);
-    let sink_arc_play = sink_arc.clone();
-    let sink_arc_control = sink_arc.clone();
-    tokio::select! {
-        _ = task::spawn_blocking(move || sink_arc_play.write(&audio).unwrap()) => {log_trace!("Exiting form tokio select")}
-        _ = tokio::time::sleep(tokio::time::Duration::from_secs(3)) => {
-            log_trace!("Timeout drain");
-            drop(sink_arc_control);
+
+    let control_sink = Arc::new(sink).clone();
+    let play_sink = control_sink.clone();
+    TTS_AUDIO_CONTROL.busy().await;
+    log_debug!("Setting audio player to busy");
+    let audio_chunks = audio.chunks(1024);
+    for chunk in audio_chunks {
+        if *TTS_AUDIO_CONTROL.status.read().await != PlayerCommands::Stop {
+            play_sink.write(chunk)?;
+        } else {
+            log_debug!("Stopping audio playback");
+            TTS_AUDIO_CONTROL.ready().await;
+            log_debug!("Setting audio player ready");
+            break;
         }
-    };
+    }
 
     Ok(())
 }
+
+// sink.write(&audio).unwrap();
+// sink.write(&audio).unwrap();
+// sink.drain().unwrap();
+// let sink_arc = Arc::new(sink);
+// let sink_arc_play = sink_arc.clone();
+// let sink_arc_control = sink_arc.clone();
+
+// task::spawn(async move {
+//     sink_arc_play.write(&audio).unwrap();
+// });
+// println!("##################################");
+
+// tokio::select! {
+//     _ = task::spawn_blocking(move || sink_arc_play.write(&audio).unwrap()) => {log_trace!("Exiting form tokio select")}
+//     _ = tokio::time::sleep(tokio::time::Duration::from_secs(3)) => {
+//         log_trace!("Timeout drain");
+//         drop(sink_arc_control);
+//     }
+// };
+
+// TTS_AUDIO_CONTROL.busy().await;
+// while TTS_AUDIO_CONTROL.status().await != PlayerCommands::Stop
+//     && sound.state() == kira::sound::PlaybackState::Playing
+// {
+//     sleep(Duration::from_millis(100));
+// }
+// TTS_AUDIO_CONTROL.ready().await;
 
 pub async fn stop_audio(_message: IrcMessage) -> Result<()> {
     TTS_AUDIO_CONTROL.stop().await;
@@ -188,9 +227,9 @@ pub async fn stop_audio(_message: IrcMessage) -> Result<()> {
 
 pub async fn play_on_kira(audio: Vec<u8>) -> Result<()> {
     let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())?;
-    let sound_data = StaticSoundData::from_cursor(Cursor::new(audio))?;
-    let mut sound = manager.play(sound_data.clone())?;
-    sound.set_volume(AUDIO_CONTROL.volume, Tween::default());
+    let sound_data = StaticSoundData::from_cursor(Cursor::new(audio))?.volume(AUDIO_CONTROL.volume);
+    let sound = manager.play(sound_data.clone())?;
+
     TTS_AUDIO_CONTROL.busy().await;
     while TTS_AUDIO_CONTROL.status().await != PlayerCommands::Stop
         && sound.state() == kira::sound::PlaybackState::Playing

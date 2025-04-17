@@ -66,7 +66,7 @@ impl Default for ExternalBotCommands {
 
 impl ExternalBotCommands {
     pub fn init() -> Self {
-        let ret_val = block_on(async { ExternalBotCommands::load(CONFIG_DIR).await });
+        let ret_val = block_on(ExternalBotCommands::load(CONFIG_DIR));
         ret_val
     }
 

@@ -56,9 +56,7 @@ impl TwitchReceiver {
         for line in split_lines(message)
             .await
             .fold(Vec::<String>::new(), |mut lines, line| {
-                lines.push(block_on(async {
-                    format!("PRIVMSG {} :{}", TWITCH_BOT_INFO.channel().await, line)
-                }));
+                lines.push(format!("PRIVMSG {} :{}", block_on(TWITCH_BOT_INFO.channel()), line));
                 lines
             })
         {
@@ -125,7 +123,7 @@ impl TwitchBotInfo {
         TwitchBotInfo {
             nick_name: RwLock::new("justinfan69696942".into()),
             channel: RwLock::new("icsboyx".into()),
-            speech_config: block_on(async { BotSpeechConfig::init().await.speech_config }),
+            speech_config: block_on(BotSpeechConfig::init()).speech_config,
         }
     }
 
