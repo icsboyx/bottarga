@@ -19,6 +19,7 @@ pub static EXTERNAL_COMMANDS_FILE: &str = "ExternalBotCommands.toml";
 #[derive(Deserialize, Debug, Clone, Serialize)]
 struct ExternalBotCommand {
     activation_pattern: String,
+    aliases: Option<Vec<String>>,
     need_arg: bool,
     custom_audio_url: String,
     replay_text: String,
@@ -36,6 +37,7 @@ impl Default for ExternalBotCommands {
     fn default() -> Self {
         let cmd_test = ExternalBotCommand {
             activation_pattern: "test".into(),
+            aliases: None,
             need_arg: false,
             custom_audio_url: "".into(),
             replay_text: "Hi there {SENDER} this is the reply to your test command".to_string(),
@@ -43,6 +45,7 @@ impl Default for ExternalBotCommands {
 
         let cmd_meow = ExternalBotCommand {
             activation_pattern: "meow".into(),
+            aliases: Some(vec!["cat".into()]),
             need_arg: false,
             custom_audio_url: "https://www.myinstants.com/media/sounds/m-e-o-w.mp3".into(),
             replay_text: "".into(),
@@ -50,6 +53,7 @@ impl Default for ExternalBotCommands {
 
         let cmd_for_president: ExternalBotCommand = ExternalBotCommand {
             activation_pattern: "for_president".into(),
+            aliases: None,
             need_arg: true,
             custom_audio_url: "".into(),
             replay_text: "{ARG} for President!".into(),
@@ -84,15 +88,25 @@ async fn ext_bot_cmd(command: ExternalBotCommand) -> Result<()> {
         return Ok(());
     }
 
+    let inner_command = command.clone();
     BOT_COMMANDS
         .add_command(
-            command.activation_pattern.clone(),
-            Arc::new(move |irc_message| {
-                let command = command.clone();
-                Box::pin(handle_command(irc_message, command))
-            }),
+            inner_command.activation_pattern.clone(),
+            Arc::new(move |irc_message| Box::pin(handle_command(irc_message, inner_command.clone()))),
         )
         .await;
+
+    if let Some(aliases) = command.clone().aliases {
+        for alias in aliases {
+            let inner_command = command.clone();
+            BOT_COMMANDS
+                .add_command(
+                    alias.clone(),
+                    Arc::new(move |irc_message| Box::pin(handle_command(irc_message, inner_command.clone()))),
+                )
+                .await;
+        }
+    }
 
     Ok(())
 }
