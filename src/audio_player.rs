@@ -32,14 +32,14 @@ pub static AUDIO_CONTROL: LazyLock<AudioControl> = LazyLock::new(|| AudioControl
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioControl {
     volume: f32,
-    linux_sink: Option<String>,
+    linux_sink_name: Option<String>,
 }
 
 impl Default for AudioControl {
     fn default() -> Self {
         Self {
             volume: -6.0,
-            linux_sink: None,
+            linux_sink_name: None,
         }
     }
 }
@@ -121,10 +121,10 @@ pub async fn start() -> Result<()> {
 
     while let Some(audio) = TTS_AUDIO_QUEUE.next().await {
         #[cfg(target_os = "linux")]
-        if let Some(sink) = &AUDIO_CONTROL.linux_sink {
-            match tokio::spawn(play_on_sink(audio.clone(), sink)).await {
+        if let Some(sink_name) = &AUDIO_CONTROL.linux_sink_name {
+            match tokio::spawn(play_on_sink(audio.clone(), sink_name)).await {
                 Ok(Ok(())) => {
-                    log_debug!("Audio played on sink: {}", sink);
+                    log_debug!("Audio played on sink: {}", sink_name);
                 }
                 Ok(Err(e)) => {
                     log_error!("Error playing audio on sink: {}", e);
