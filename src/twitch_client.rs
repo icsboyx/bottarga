@@ -212,6 +212,7 @@ pub async fn start() -> Result<()> {
             ret_val = read.next() => {
                 match ret_val {
                     Some(Ok(msg)) => {
+                        log_debug!("[RAW]: {:#?}", msg);
                         match msg {
                             Message::Text(text) => {
                                 handle_twitch_msg(text.trim()).await?;

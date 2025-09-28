@@ -144,7 +144,7 @@ pub async fn start() -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-pub async fn play_on_sink(audio: Vec<u8>, sink: impl AsRef<str>) -> Result<()> {
+pub async fn play_on_sink(audio: Vec<u8>, sink_name: impl AsRef<str>) -> Result<()> {
     let cursor = Cursor::new(audio);
     let source = Decoder::new(cursor)?.convert_samples::<f32>();
     let sample_rate = source.sample_rate();
@@ -162,14 +162,14 @@ pub async fn play_on_sink(audio: Vec<u8>, sink: impl AsRef<str>) -> Result<()> {
     assert!(spec.is_valid());
 
     let sink = Simple::new(
-        None,                // Use the default server
-        "botox",             // Our application’s name
-        Direction::Playback, // We want a playback stream
-        Some(sink.as_ref()), // Use the default device if failed
-        "botox tts",         // Description of our stream
-        &spec,               // Our sample format
-        None,                // Use default channel map
-        None,                // Use default buffering attributes
+        None,                     // Use the default server
+        "botox",                  // Our application’s name
+        Direction::Playback,      // We want a playback stream
+        Some(sink_name.as_ref()), // Use the default device if failed
+        "botox tts",              // Description of our stream
+        &spec,                    // Our sample format
+        None,                     // Use default channel map
+        None,                     // Use default buffering attributes
     )
     .unwrap();
 
