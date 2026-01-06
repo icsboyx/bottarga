@@ -111,3 +111,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - [Rust Documentation](https:#doc.rust-lang.org/)
 - [Tokio Documentation](https:#tokio.rs/)
 - [GitHub Repository](https:#github.com/icsboyx/bottarga)
+
+---
