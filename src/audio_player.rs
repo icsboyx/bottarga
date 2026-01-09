@@ -16,6 +16,7 @@ use pulse::sample::{Format, Spec};
 // compile this only for linux
 #[cfg(target_os = "linux")]
 use pulse::stream::Direction;
+#[cfg(target_os = "linux")]
 use rodio::{Decoder, Source};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
