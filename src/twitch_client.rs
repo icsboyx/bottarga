@@ -10,11 +10,11 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::Message;
 
+use crate::CONFIG_DIR;
 use crate::bot_commands::BOT_COMMAND_PREFIX;
 use crate::common::{BroadCastChannel, PersistentConfig};
 use crate::irc_parser::{IrcMessage, parse_message};
 use crate::tts::{TTS_QUEUE, TTS_VOCE_BD, voice_msg};
-use crate::{CONFIG_DIR, log};
 
 pub static TWITCH_BOT_INFO: LazyLock<TwitchBotInfo> = LazyLock::new(|| TwitchBotInfo::init());
 pub static TWITCH_BROADCAST: LazyLock<BroadCastChannel<IrcMessage>> =
