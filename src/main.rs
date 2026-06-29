@@ -1,6 +1,3 @@
-use eyre::Result;
-use task_manager::TASKS_MANAGER;
-
 pub mod common;
 #[macro_use]
 pub mod macros;
@@ -14,6 +11,10 @@ pub mod twitch_client;
 pub mod users;
 pub mod utils;
 
+use eyre::Result;
+use task_manager::TASKS_MANAGER;
+use twitch_client::tw_client;
+
 pub static CONFIG_DIR: Option<&'static str> = Some(".config");
 
 #[tokio::main]
@@ -21,7 +22,7 @@ pub static CONFIG_DIR: Option<&'static str> = Some(".config");
 async fn main() -> Result<()> {
     // Start the Twitch client
     TASKS_MANAGER
-        .add("TWITCH_CLIENT", || Box::pin(twitch_client::tw_client::start()), 3)
+        .add("TWITCH_CLIENT", || Box::pin(tw_client::start()), 3)
         .await;
     // Start the TTS client
     TASKS_MANAGER.add("TTS", || Box::pin(tts::start()), 3).await;
