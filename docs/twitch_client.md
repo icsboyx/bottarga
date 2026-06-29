@@ -18,7 +18,7 @@ It is responsible for:
 On startup, `tw_client::start()` performs these steps:
 
 1. Load and validate `TwitchToken.toml`.
-2. Load `TwitchScopesConfig.toml`, creating it with default scopes if missing.
+2. Load `TwitchScopesConfig.toml`; like the other config files, it is generated with defaults when missing.
 3. If the token is missing, invalid, or does not contain all configured scopes, print a Twitch authorization URL and ask for the redirected URL.
 4. Load `StreamerChannel.toml`.
 5. If the channel is missing, ask for a channel login and resolve it through Helix users API.
@@ -70,7 +70,7 @@ The Twitch client uses:
 
 It uses the shared `.config` directory and `PersistentConfig` TOML files.
 
-`TwitchScopesConfig.toml` contains the OAuth scopes requested during authorization. The default file is generated from the scopes compiled into the application.
+`TwitchScopesConfig.toml` contains the OAuth scopes requested during authorization. The default file is generated from the scopes compiled into the application. It is documented explicitly because changing it requires a new Twitch authorization token.
 
 Example:
 

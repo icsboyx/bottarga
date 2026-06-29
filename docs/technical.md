@@ -50,7 +50,7 @@ TASKS_MANAGER
 
 ## Configuration Files
 
-The active configuration directory is `.config`.
+The active configuration directory is `.config`. Runtime configuration files are generated automatically when missing.
 
 Current files used by the application:
 

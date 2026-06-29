@@ -66,11 +66,13 @@ The generated runtime configuration is stored under `.config/`.
 
 ## Twitch Scopes
 
-Bottarga requests the scopes configured in `.config/TwitchScopesConfig.toml`. If that file does not exist, it is generated with the default scopes required by the current bot features.
+Bottarga requests the scopes configured in `.config/TwitchScopesConfig.toml`. Like the other runtime configuration files, this file is generated automatically when missing. It is mentioned separately because changing it changes the OAuth permissions requested from Twitch.
 
 The token is validated on startup. If the stored token is missing, invalid, or does not contain all configured scopes, the bot prints a Twitch authorization URL and asks for the redirected URL.
 
 ## Configuration
+
+Bottarga generates runtime configuration files under `.config` when they are missing.
 
 Current configuration files:
 

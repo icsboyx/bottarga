@@ -53,7 +53,7 @@ Bottarga also creates:
 .config/TwitchScopesConfig.toml
 ```
 
-This file controls which OAuth scopes are requested during Twitch authorization. The generated defaults match the bot's built-in features.
+This file controls which OAuth scopes are requested during Twitch authorization. It is generated automatically like the other `.config` files, and its defaults match the bot's built-in features.
 
 Example:
 
