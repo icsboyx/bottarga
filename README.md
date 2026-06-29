@@ -1,5 +1,9 @@
 # Bottarga
 
+<p align="center">
+  <img src="assets/img/logo.png" alt="Bottarga logo" width="640">
+</p>
+
 Bottarga is a Twitch chat text-to-speech bot written in Rust.
 
 It connects to Twitch through EventSub WebSocket, receives chat messages, converts them to speech, plays the generated audio locally, and handles chat commands. Replies are sent through the Twitch Helix chat API.
