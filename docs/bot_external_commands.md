@@ -1,80 +1,45 @@
 # External Bot Commands
 
-This module provides functionality for managing and executing external bot commands in the Twitch bot. It allows users to define custom commands with specific activation patterns, optional arguments, and custom audio responses.
+External commands are user-configurable chat commands loaded from `.config/ExternalBotCommands.toml`.
 
-## Key Structures
+They are useful for simple replies and optional audio clips without changing Rust code.
 
-### `ExternalBotCommand`
-
-Represents a single external bot command with the following fields:
-
-- `activation_pattern` (String): The command trigger word.
-- `need_arg` (bool): Indicates if the command requires an argument.
-- `custom_audio_url` (String): URL for custom audio to play when the command is triggered.
-- `replay_text` (String): Text response template. Supports placeholders like `{SENDER}` and `{ARG}`.
-
-### `ExternalBotCommands`
-
-A collection of `ExternalBotCommand` objects stored in a `HashMap`. Implements:
-
-- `PersistentConfig`: For loading and saving configuration.
-- `Default`: Provides default commands (`test`, `meow`, `for_president`).
-
-## Key Functions
-
-### `ExternalBotCommands::init()`
-
-Initializes the external bot commands by loading them from the configuration directory.
-
-### `ExternalBotCommands::reg_ext_bot_cmd()`
-
-Registers all external bot commands with the bot's command handler.
-
-### `handle_command(irc_message: IrcMessage, command: ExternalBotCommand)`
-
-Handles the execution of a command when triggered. It:
-
-1. Replaces placeholders in the `replay_text` with actual values.
-2. Plays custom audio if `custom_audio_url` is provided.
-3. Sends the response text to the Twitch chat.
-
-### `get_audio_data(url: impl AsRef<str>) -> Vec<u8>`
-
-Fetches audio data from a given URL for playback.
-
-## Default Commands
-
-1. **`test`**: Replies with "Hi there {SENDER} this is the reply to your test command".
-2. **`meow`**: Plays a "meow" sound from a predefined URL.
-3. **`for_president`**: Requires an argument and replies with "{ARG} for President!".
-
-## Usage
-
-1. Define commands in the `ExternalBotCommands` structure.
-2. Use `ExternalBotCommands::init()` to load commands from the configuration file.
-3. Call `ExternalBotCommands::reg_ext_bot_cmd()` to register commands with the bot.
-
-## Example
-
-To add a new command, update the `ExternalBotCommands.toml` file in the configuration directory as follows:
+## Configuration Format
 
 ```toml
-# filepath: .config/ExternalBotCommands.toml
-
 [commands.hello]
 activation_pattern = "hello"
+aliases = ["hi"]
 need_arg = false
 custom_audio_url = ""
 replay_text = "Hello, {SENDER}!"
 
-[commands.greet]
-activation_pattern = "greet"
+[commands.for_president]
+activation_pattern = "for_president"
+aliases = []
 need_arg = true
-custom_audio_url = "https://example.com/greet.mp3"
-replay_text = "Greetings, {ARG}!"
+custom_audio_url = ""
+replay_text = "{ARG} for President!"
 ```
 
-This will create two commands:
+## Fields
 
-1. `hello`: Responds with "Hello, {SENDER}!" when triggered.
-2. `greet`: Requires an argument and responds with "Greetings, {ARG}!" while playing the specified audio.
+- `activation_pattern`: command trigger without the `!` prefix.
+- `aliases`: optional alternative triggers.
+- `need_arg`: when `true`, the command expects text after the trigger.
+- `custom_audio_url`: optional audio URL to fetch and push to the audio queue.
+- `replay_text`: chat reply template.
+
+## Placeholders
+
+- `{SENDER}`: replaced with the Twitch login that triggered the command.
+- `{ARG}`: replaced with the text after the command trigger.
+
+## Runtime Behavior
+
+When an external command runs, Bottarga:
+
+1. Builds the reply text.
+2. Downloads and queues custom audio when `custom_audio_url` is not empty.
+3. Queues the reply for TTS using the bot voice.
+4. Replies in Twitch chat through Helix.

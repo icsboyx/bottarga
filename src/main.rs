@@ -1,17 +1,18 @@
 use eyre::Result;
 use task_manager::TASKS_MANAGER;
+
 pub mod common;
 #[macro_use]
 pub mod macros;
 pub mod audio_player;
 pub mod bot_commands;
 pub mod bot_external_commands;
-pub mod irc_parser;
 pub mod task_manager;
 pub mod task_stats;
 pub mod tts;
 pub mod twitch_client;
 pub mod users;
+pub mod utils;
 
 pub static CONFIG_DIR: Option<&'static str> = Some(".config");
 
@@ -20,7 +21,7 @@ pub static CONFIG_DIR: Option<&'static str> = Some(".config");
 async fn main() -> Result<()> {
     // Start the Twitch client
     TASKS_MANAGER
-        .add("TWITCH_CLIENT", || Box::pin(twitch_client::start()), 3)
+        .add("TWITCH_CLIENT", || Box::pin(twitch_client::tw_client::start()), 3)
         .await;
     // Start the TTS client
     TASKS_MANAGER.add("TTS", || Box::pin(tts::start()), 3).await;

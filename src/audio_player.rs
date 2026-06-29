@@ -24,7 +24,7 @@ use tokio::sync::RwLock;
 use crate::CONFIG_DIR;
 use crate::bot_commands::BOT_COMMANDS;
 use crate::common::{MSGQueue, PersistentConfig};
-use crate::irc_parser::IrcMessage;
+use crate::twitch_client::tw_client::TwitchChatMessage;
 
 pub static TTS_AUDIO_QUEUE: LazyLock<MSGQueue<Vec<u8>>> = LazyLock::new(|| MSGQueue::new());
 pub static TTS_AUDIO_CONTROL: LazyLock<AudioPlayControl> = LazyLock::new(|| AudioPlayControl::new());
@@ -116,7 +116,7 @@ pub async fn start() -> Result<()> {
     BOT_COMMANDS
         .add_command(
             "stop",
-            Arc::new(|irc_message| Box::pin(bot_cmd_stop_audio(irc_message))),
+            Arc::new(|chat_message| Box::pin(bot_cmd_stop_audio(chat_message))),
         )
         .await;
 
@@ -212,7 +212,7 @@ pub async fn play_on_sink(audio: Vec<u8>, sink_name: impl AsRef<str>) -> Result<
     Ok(())
 }
 
-pub async fn bot_cmd_stop_audio(_message: IrcMessage) -> Result<()> {
+pub async fn bot_cmd_stop_audio(_message: TwitchChatMessage) -> Result<()> {
     TTS_AUDIO_CONTROL.set_status_stop().await;
     Ok(())
 }

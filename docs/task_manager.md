@@ -1,42 +1,30 @@
 # Task Manager
 
-The `task_manager` module handles the management and monitoring of asynchronous tasks in Bottarga.
+The task manager runs Bottarga's long-lived async services.
 
----
+Each task is registered with:
 
-## Key Features
+- a name
+- an async function factory
+- a maximum restart count
 
-- **Task Management**: Add, execute, and monitor tasks.
-- **Statistics**: Retrieve task execution stats like success rates and execution times.
-- **Retry Mechanism**: Automatically restart tasks based on predefined limits.
+## Behavior
 
----
+When `run_tasks()` is called, the manager starts all registered tasks. If a task exits with an error, it can be restarted until its configured restart limit is reached.
 
-## Usage
+This is used for:
 
-- **Add a Task**:
+- Twitch client
+- TTS worker
+- audio player
+- command worker
 
-  ```rust
-  TASKS_MANAGER.add_task(async {
-      // Task logic
-  }).await;
-  ```
+## Example
 
-- **Retrieve Statistics**:
-  ```rust
-  let stats = TASKS_MANAGER.get_stats().await;
-  println!("{:?}", stats);
-  ```
+```rust
+TASKS_MANAGER
+    .add("TTS", || Box::pin(tts::start()), 3)
+    .await;
+```
 
----
-
-## Integration
-
-The `task_stats.rs` module periodically fetches task statistics from `TASKS_MANAGER` for real-time monitoring.
-
----
-
-## Notes
-
-- Ensure `TASKS_MANAGER` is initialized before use.
-- Tasks should handle errors gracefully to avoid unnecessary retries.
+The example registers the TTS task and allows up to three restarts.

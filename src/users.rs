@@ -37,10 +37,13 @@ impl UsersDB {
     }
 
     pub async fn update_user(&mut self, nick: impl AsRef<str>, speech_config: SpeechConfig) -> User {
-        self.users.insert(nick.as_ref().into(), User {
-            nick: nick.as_ref().into(),
-            speech_config,
-        });
+        self.users.insert(
+            nick.as_ref().into(),
+            User {
+                nick: nick.as_ref().into(),
+                speech_config,
+            },
+        );
         let _ = (*self).save(CONFIG_DIR).await;
         self.get_user(nick).await
     }

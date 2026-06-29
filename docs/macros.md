@@ -1,147 +1,45 @@
-# Macros Documentation
+# Macros
 
-This document provides an overview of the macros available in the `macros.rs` file.
+Bottarga uses macros for lightweight logging, timestamps, and source locations.
 
-## `now!`
+## Logging
 
-Generates a formatted string representing the current date and time in the format `YYYY-MM-DD HH:MM:SS`.
+Common logging macros:
 
-### Example
+- `log!(...)`: normal stdout log.
+- `log_error!(...)`: error-style stdout log.
+- `log_warning!(...)`: warning-style stdout log.
+- `log_debug!(...)`: debug-only stdout log.
+- `log_trace!(...)`: debug-only trace log.
+- `err_log!(...)`: stderr log with timestamp and location/module context.
+
+Debug and trace macros are compiled only for debug builds where applicable.
+
+## Source Location
+
+- `here!()`: returns the current file and line.
+- `here_v2!()`: returns file, line, and column in a padded format.
+
+## Timestamps
+
+- `now!()`: legacy local timestamp.
+- `now_v2!()`: local timestamp with microsecond precision.
+- `now_utc!()`: UTC timestamp with microsecond precision.
+- `timestamp!()`: local timestamp with selectable precision.
+- `timestamp_utc!()`: UTC timestamp with selectable precision.
+
+Supported precision arguments for `timestamp!` and `timestamp_utc!`:
+
+- `millis` / `milliseconds`
+- `micros` / `micro`
+- `nanos` / `nano`
+- a custom chrono format string literal
+
+Example:
 
 ```rust
-let current_time = now!();
-println!("{}", current_time);
-```
-
----
-
-## `here!`
-
-Generates a string containing the current file name and line number.
-
-### Example
-
-```rust
+log!("Twitch client started");
+err_log!("HTTP request failed: {}", error);
 let location = here!();
-println!("{}", location);
-```
-
----
-
-## `log_write!`
-
-Logs a message with a timestamp and optional color formatting.
-
-### Example
-
-```rust
-log_write!(colored::Color::Green, "This is a log message.");
-```
-
----
-
-## `log_write_original!`
-
-Logs a message with a timestamp and optional color formatting (original implementation).
-
-### Example
-
-```rust
-log_write_original!(colored::Color::Blue, "Original log message.");
-```
-
----
-
-## `log!`
-
-Logs a message in white color.
-
-### Example
-
-```rust
-log!("This is a log message.");
-```
-
----
-
-## `log_error!`
-
-Logs an error message in red color.
-
-### Example
-
-```rust
-log_error!("This is an error message.");
-```
-
----
-
-## `log_warning!`
-
-Logs a warning message in yellow color.
-
-### Example
-
-```rust
-log_warning!("This is a warning message.");
-```
-
----
-
-## `log_debug!`
-
-Logs a debug message in blue color. Only active in debug builds.
-
-### Example
-
-```rust
-log_debug!("This is a debug message.");
-```
-
----
-
-## `log_debug_error!`
-
-Logs a debug error message in red color. Only active in debug builds.
-
-### Example
-
-```rust
-log_debug_error!("This is a debug error message.");
-```
-
----
-
-## `log_trace!`
-
-Logs a trace message in magenta color. Only active in debug builds.
-
-### Example
-
-```rust
-log_trace!("This is a trace message.");
-```
-
----
-
-## `log_trace_error!`
-
-Logs a trace error message in red color. Only active in debug builds.
-
-### Example
-
-```rust
-log_trace_error!("This is a trace error message.");
-```
-
----
-
-## `log_debugc!`
-
-Logs a debug message with a custom color. Only active in debug builds.
-
-### Example
-
-```rust
-log_debugc!(colored::Color::Cyan, "This is a custom debug message.");
+let ts = timestamp!(millis);
 ```

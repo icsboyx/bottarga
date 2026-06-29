@@ -10,9 +10,9 @@ use crate::CONFIG_DIR;
 use crate::audio_player::TTS_AUDIO_QUEUE;
 use crate::bot_commands::{BOT_COMMAND_PREFIX, BOT_COMMANDS};
 use crate::common::PersistentConfig;
-use crate::irc_parser::IrcMessage;
 use crate::tts::{TTS_QUEUE, voice_msg};
-use crate::twitch_client::{TWITCH_BOT_INFO, TWITCH_RECEIVER};
+use crate::twitch_client::tw_client::TwitchChatMessage;
+use crate::twitch_client::tw_oauth_token::TW_TOKEN;
 
 pub static EXTERNAL_COMMANDS_FILE: &str = "ExternalBotCommands.toml";
 
@@ -92,7 +92,7 @@ async fn ext_bot_cmd(command: ExternalBotCommand) -> Result<()> {
     BOT_COMMANDS
         .add_command(
             inner_command.activation_pattern.clone(),
-            Arc::new(move |irc_message| Box::pin(handle_command(irc_message, inner_command.clone()))),
+            Arc::new(move |chat_message| Box::pin(handle_command(chat_message, inner_command.clone()))),
         )
         .await;
 
@@ -102,7 +102,7 @@ async fn ext_bot_cmd(command: ExternalBotCommand) -> Result<()> {
             BOT_COMMANDS
                 .add_command(
                     alias.clone(),
-                    Arc::new(move |irc_message| Box::pin(handle_command(irc_message, inner_command.clone()))),
+                    Arc::new(move |chat_message| Box::pin(handle_command(chat_message, inner_command.clone()))),
                 )
                 .await;
         }
@@ -128,20 +128,20 @@ async fn get_audio_data(url: impl AsRef<str>) -> Vec<u8> {
     data
 }
 
-async fn handle_command(irc_message: IrcMessage, command: ExternalBotCommand) -> Result<()> {
+async fn handle_command(chat_message: TwitchChatMessage, command: ExternalBotCommand) -> Result<()> {
     log_debug!("Running command: {}", command.activation_pattern);
 
     let reply_payload = if command.need_arg {
-        if let Some(arg) = irc_message.payload.split_once(" ").map(|(_, arg)| arg) {
+        if let Some(arg) = chat_message.payload.split_once(" ").map(|(_, arg)| arg) {
             command.replay_text.replace("{ARG}", arg)
         } else {
             format!(
                 "Hey @{}, you need to provide an argument for {}{} command",
-                &irc_message.sender, BOT_COMMAND_PREFIX, &command.activation_pattern
+                &chat_message.sender, BOT_COMMAND_PREFIX, &command.activation_pattern
             )
         }
     } else {
-        command.replay_text.replace("{SENDER}", &irc_message.sender)
+        command.replay_text.replace("{SENDER}", &chat_message.sender)
     };
 
     if !command.custom_audio_url.is_empty() {
@@ -150,9 +150,9 @@ async fn handle_command(irc_message: IrcMessage, command: ExternalBotCommand) ->
     }
 
     TTS_QUEUE
-        .push_back(voice_msg(&reply_payload, &TWITCH_BOT_INFO.nick_name().await).await)
+        .push_back(voice_msg(&reply_payload, &TW_TOKEN.login().await).await)
         .await;
-    TWITCH_RECEIVER.send_privmsg(reply_payload).await;
+    chat_message.reply(reply_payload).await?;
 
     Ok(())
 }

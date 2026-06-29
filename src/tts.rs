@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::collections::HashSet;
 use std::sync::{Arc, LazyLock};
 
@@ -13,8 +12,9 @@ use crate::CONFIG_DIR;
 use crate::audio_player::TTS_AUDIO_QUEUE;
 use crate::bot_commands::BOT_COMMANDS;
 use crate::common::{MSGQueue, PersistentConfig};
-use crate::irc_parser::IrcMessage;
-use crate::twitch_client::{TWITCH_BOT_INFO, TWITCH_RECEIVER};
+use crate::twitch_client::tw_api::send_chat_message;
+use crate::twitch_client::tw_client::TwitchChatMessage;
+use crate::twitch_client::tw_oauth_token::TW_TOKEN;
 use crate::users::{USER_DB, USER_DEFAULT_VOICE_CONFIG};
 
 pub static TTS_VOCE_BD: LazyLock<VoiceDB> = LazyLock::new(|| VoiceDB::default());
@@ -34,7 +34,7 @@ pub async fn start() -> Result<()> {
     BOT_COMMANDS
         .add_command(
             "list_locales",
-            Arc::new(|irc_message| Box::pin(bot_cmd_tts_list_all_locales(irc_message))),
+            Arc::new(|chat_message| Box::pin(bot_cmd_tts_list_all_locales(chat_message))),
         )
         .await;
 
@@ -42,7 +42,7 @@ pub async fn start() -> Result<()> {
     BOT_COMMANDS
         .add_command(
             "reset_voice",
-            Arc::new(|irc_message| Box::pin(bot_cmd_tts_reset_voice(irc_message))),
+            Arc::new(|chat_message| Box::pin(bot_cmd_tts_reset_voice(chat_message))),
         )
         .await;
 
@@ -56,21 +56,6 @@ pub async fn start() -> Result<()> {
 pub struct TTSMassage {
     pub speech_config: SpeechConfig,
     pub payload: String,
-}
-
-impl Default for TTSMassage {
-    fn default() -> Self {
-        Self {
-            speech_config: SpeechConfig {
-                voice_name: "".into(),
-                audio_format: "".into(),
-                pitch: 0,
-                rate: 0,
-                volume: 0,
-            },
-            payload: "".into(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,10 +74,6 @@ impl Default for VoiceDB {
 impl PersistentConfig for VoiceDB {}
 
 impl VoiceDB {
-    pub async fn list_all_voices(&self) -> Vec<&String> {
-        self.voice_list.iter().map(|v| &v.name).collect::<Vec<_>>()
-    }
-
     pub fn filter_voices_by_text(&self, filter: &[&str]) -> Self {
         let voice_list = self
             .voice_list
@@ -127,52 +108,6 @@ impl VoiceDB {
         }
 
         locales.into_iter().collect()
-    }
-
-    async fn filter_locale(&self, locale: impl AsRef<str>) -> Self {
-        let locale = locale.as_ref().to_lowercase();
-
-        let voice_list = self
-            .voice_list
-            .iter()
-            .filter(|voice| {
-                if let Some(v_locale) = &voice.locale {
-                    v_locale.to_lowercase().contains(locale.as_str())
-                } else {
-                    false
-                }
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        if voice_list.is_empty() {
-            log_debug!("No voices found for locale: {}, no filter is applied", locale);
-            return self.clone();
-        }
-        Self { voice_list }
-    }
-
-    async fn filter_gender(&self, gender: impl AsRef<str>) -> Self {
-        let gender = gender.as_ref().to_lowercase();
-
-        let voice_list = self
-            .voice_list
-            .iter()
-            .filter(|voice| {
-                if let Some(v_gender) = &voice.gender {
-                    v_gender.to_lowercase().contains(gender.as_str())
-                } else {
-                    false
-                }
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        if voice_list.is_empty() {
-            log_debug!("No correct gender found: {}, no filter is applied", gender);
-            return self.clone();
-        }
-        Self { voice_list }
     }
 
     pub fn random(&self) -> &Voice {
@@ -212,24 +147,24 @@ fn remove_url_in_text(text: impl AsRef<str>) -> String {
 }
 
 pub async fn voice_msg(payload: &impl AsRef<str>, nick: &impl AsRef<str>) -> TTSMassage {
-    let speech_config = if nick.as_ref() != TWITCH_BOT_INFO.nick_name().await {
-        &USER_DB.write().await.get_user(nick).await.get_speech_config().clone()
+    let speech_config = if nick.as_ref() != TW_TOKEN.login().await {
+        USER_DB.write().await.get_user(nick).await.get_speech_config().clone()
     } else {
-        TWITCH_BOT_INFO.speech_config().await
+        TTS_VOCE_BD.filter_voices_by_text(&["it-IT", "multi"]).random().into()
     };
     TTSMassage {
-        speech_config: speech_config.clone(),
+        speech_config,
         payload: payload.as_ref().into(),
     }
 }
 
-pub async fn bot_cmd_tts_list_all_locales(_message: IrcMessage) -> Result<()> {
+pub async fn bot_cmd_tts_list_all_locales(message: TwitchChatMessage) -> Result<()> {
     let ret_val = format!("Available locales: {}", TTS_VOCE_BD.list_all_locales().await.join(", "));
-    TWITCH_RECEIVER.send_privmsg(ret_val).await;
+    message.reply(ret_val).await?;
     Ok(())
 }
 
-pub async fn bot_cmd_tts_reset_voice(message: IrcMessage) -> Result<()> {
+pub async fn bot_cmd_tts_reset_voice(message: TwitchChatMessage) -> Result<()> {
     let nick = message.sender;
     let filter = &message.payload.split_whitespace().collect::<Vec<_>>()[1..];
     USER_DB
@@ -249,8 +184,8 @@ pub async fn bot_cmd_tts_reset_voice(message: IrcMessage) -> Result<()> {
             .voice_name
     );
     TTS_QUEUE
-        .push_back(voice_msg(&payload, &TWITCH_BOT_INFO.nick_name().await).await)
+        .push_back(voice_msg(&payload, &TW_TOKEN.login().await).await)
         .await;
-    TWITCH_RECEIVER.send_privmsg(payload).await;
+    send_chat_message(payload, Some(&message.message_id)).await?;
     Ok(())
 }

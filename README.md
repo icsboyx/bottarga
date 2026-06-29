@@ -1,115 +1,100 @@
-<div style="text-align:center"><img src="assets/img/bottarga.png" /></div>
-
 # Bottarga
 
-Bottarga is a simle Text to Speech bot for Twitch chat.
-It can read chat messages and convert them to the voice.
-Can interact with Twitch Chat. And execute commands from chat.
-Command are predefined and can be extended.
+Bottarga is a Twitch chat text-to-speech bot written in Rust.
 
----
+It connects to Twitch through EventSub WebSocket, receives chat messages, converts them to speech, plays the generated audio locally, and handles chat commands. Replies are sent through the Twitch Helix chat API.
 
-## Table of Contents
+## Features
 
-1. [Overview](#overview)
-2. [Capabilities](#capabilities)
-3. [Installation](#installation)
-4. [Documentation](#documentation)
-5. [Contributing](#contributing)
-6. [License](#license)
+- Twitch EventSub WebSocket chat listener
+- Twitch OAuth token bootstrap and validation
+- Chat replies through Helix `chat/messages`
+- Text-to-speech with `msedge-tts`
+- Per-user voice selection persisted in `.config/UsersDB.toml`
+- Built-in bot commands
+- Configurable external commands with optional audio clips
+- Audio playback with Kira and optional Linux PulseAudio sink support
+- Tokio task manager with restart support
 
----
+## How It Works
 
-## Overview
+```text
+Twitch EventSub WebSocket
+        |
+        v
+TwitchChatMessage
+        |
+        +--> TTS queue --> speech synthesis --> audio queue --> audio player
+        |
+        +--> command broadcast --> bot commands --> Helix chat reply
+```
 
-Bottarga is a multi-functional project that integrates various components to provide a robust framework for managing tasks, processing audio, handling bot commands, and interacting with external services like Twitch. It leverages asynchronous programming with [Tokio](https:#tokio.rs/) to ensure high performance and scalability.
+## Requirements
 
----
+- Rust stable toolchain
+- A Twitch account for the bot/user token
+- Network access to Twitch APIs and EventSub
+- Audio output on the host machine
+- On Linux, optional PulseAudio sink configuration for routed playback
 
-## Capabilities
+## Setup
 
-### 1. **Task Management**
+Clone and build the project:
 
-- Add and manage asynchronous tasks.
-- Execute tasks with retry mechanisms.
-- List and monitor running tasks.
+```bash
+git clone https://github.com/icsboyx/bottarga.git
+cd bottarga
+cargo build --release
+```
 
-### 2. **Audio Playback**
+Run the bot:
 
-- Play, stop, and manage audio streams.
-- Notify and handle audio playback events.
+```bash
+cargo run --release
+```
 
-### 3. **Twitch Client**
+On first run, Bottarga prompts for:
 
-- Interact with Twitch APIs and services for streaming and chat integration.
+- a Twitch OAuth redirect URL after authorization
+- the Twitch channel name to join
 
-### 4. **IRC Parsing**
+The generated runtime configuration is stored under `.config/`.
 
-- Parse and process IRC messages for real-time communication.
+## Twitch Scopes
 
-### 5. **Text-to-Speech (TTS)**
+Bottarga requests the scopes configured in `.config/TwitchScopesConfig.toml`. If that file does not exist, it is generated with the default scopes required by the current bot features.
 
-- Generate and play TTS audio streams.
+The token is validated on startup. If the stored token is missing, invalid, or does not contain all configured scopes, the bot prints a Twitch authorization URL and asks for the redirected URL.
 
-### 6. **Bot Commands**
+## Configuration
 
-- Process and execute bot commands for automation.
-- Available commands:
-  - **`!help`**: Show help message and list all commands.
-  - **`!list_locales`**: Show list of supported locales for TTS.
-  - **`!reset_voice`**:
-    > Reset voice to random if no arguments are provided.  
-    > If arguments are provided, a text search is applied on VoiceDB to find a voice.  
-    > In case of multiple results, a random one is selected from the search results.
-  - **`!stop`**: Stop Audio playing.
+Current configuration files:
 
-### 7. **External Bot Commands**
+- `.config/TwitchToken.toml`: OAuth access token and validated token identity.
+- `.config/TwitchScopesConfig.toml`: OAuth scopes requested during Twitch authorization.
+- `.config/StreamerChannel.toml`: Twitch channel login and broadcaster user id.
+- `.config/UsersDB.toml`: per-user TTS voice preferences.
+- `.config/UserDefaultVoiceConfig.toml`: default voice search filter for new users.
+- `.config/VoiceDB.toml`: generated voice catalog for inspection.
+- `.config/AudioControl.toml`: audio playback settings.
+- `.config/ExternalBotCommands.toml`: custom chat commands.
 
-- Process and execute external bot commands for automation, loaded from external config file.
+## Commands
 
----
+Built-in commands use the `!` prefix:
 
-## Installation
+- `!help`: list registered commands.
+- `!list_locales`: list available TTS locales.
+- `!reset_voice <filter>`: choose a random voice matching the filter terms for the sender.
+- `!stop`: stop current audio playback.
 
-To set up Bottarga, follow these steps:
-
-1. Clone the repository:
-   ```bash
-   git clone https:#github.com/icsboyx/bottarga.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd bottarga
-   ```
-3. Run the application using Cargo:
-
-   ```bash
-   cargo run --release
-   ```
-
-4. Build the project using Cargo:
-   ```bash
-   cargo build --release
-   ```
-
----
+External commands are loaded from `.config/ExternalBotCommands.toml` and can define aliases, required arguments, reply text, and optional audio URLs.
 
 ## Documentation
 
-This is the link to the documentation [Documentation](docs/README.md)
-
-## Contributing
-
-We welcome contributions to Bottarga!
+- [User guide](docs/user_guide.md): setup, configuration, commands, and troubleshooting.
+- [Technical documentation](docs/technical.md): module and runtime details.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
-
-## Additional Resources
-
-- [Rust Documentation](https:#doc.rust-lang.org/)
-- [Tokio Documentation](https:#tokio.rs/)
-- [GitHub Repository](https:#github.com/icsboyx/bottarga)
-
----
+This project is licensed under the terms in [LICENSE](LICENSE).

@@ -1,89 +1,91 @@
-# Twitch Client Module Documentation
+# Twitch Client
 
-This module implements a Twitch client for interacting with Twitch's IRC-based chat system. It provides functionality for connecting to Twitch, handling messages, and broadcasting messages to other parts of the application.
+The Twitch client connects Bottarga to Twitch chat through EventSub WebSocket.
 
-## Key Components
+It is responsible for:
 
-### 1. **Static Variables**
+- loading and validating the OAuth token
+- loading the broadcaster channel
+- opening the EventSub WebSocket connection
+- subscribing to chat and whisper events
+- converting chat notifications into `TwitchChatMessage`
+- broadcasting chat messages to bot commands
+- pushing normal chat text into the TTS queue
+- sending replies through the Helix chat API
 
-- `TWITCH_BOT_INFO`: Stores bot-related information such as nickname, channel, and speech configuration.
-- `TWITCH_BROADCAST`: A broadcast channel for sending IRC messages to other parts of the application.
-- `TWITCH_RECEIVER`: A message queue for sending messages to Twitch.
+## Startup
 
-### 2. **Traits**
+On startup, `tw_client::start()` performs these steps:
 
-- `IntoIrcPRIVMSG`: Converts a message into an IRC `PRIVMSG` format.
-- `WsMessageHandler`: Converts a message into a WebSocket text message.
+1. Load and validate `TwitchToken.toml`.
+2. Load `TwitchScopesConfig.toml`, creating it with default scopes if missing.
+3. If the token is missing, invalid, or does not contain all configured scopes, print a Twitch authorization URL and ask for the redirected URL.
+4. Load `StreamerChannel.toml`.
+5. If the channel is missing, ask for a channel login and resolve it through Helix users API.
+6. Connect to `wss://eventsub.wss.twitch.tv/ws`.
+7. On `session_welcome`, create EventSub subscriptions for chat and whispers.
 
-### 3. **Structures**
+## Chat Message Flow
 
-- `BotSpeechConfig`: Manages speech configuration for text-to-speech (TTS) functionality.
-- `TwitchBotInfo`: Stores and manages bot-related information such as nickname and channel.
-- `TwitchConfig`: Stores configuration details for connecting to Twitch, such as server, nickname, and authentication token.
+When a `channel.chat.message` notification arrives, the client extracts:
 
-### 4. **Functions**
+- sender login
+- message text
+- Twitch message id
 
-- `start()`: The main entry point for the Twitch client. Handles WebSocket communication, message processing, and periodic pinging.
-- `twitch_auth()`: Authenticates the bot with Twitch using the provided configuration.
-- `split_lines()`: Splits a long message into multiple lines, ensuring each line adheres to the maximum length.
-- `handle_twitch_msg()`: Processes incoming Twitch messages and handles commands like `PING`, `PRIVMSG`, and `JOIN`.
-
-## Workflow
-
-1. **Initialization**:
-
-   - The bot initializes its configuration (`TwitchConfig`) and speech settings (`BotSpeechConfig`).
-   - Static variables like `TWITCH_BOT_INFO` and `TWITCH_BROADCAST` are set up.
-
-2. **Connection**:
-
-   - The `start()` function establishes a WebSocket connection to Twitch's IRC server.
-   - The bot authenticates itself using `twitch_auth()`.
-
-3. **Message Handling**:
-
-   - Incoming messages are processed by `handle_twitch_msg()`.
-   - Commands like `PING`, `PRIVMSG`, and `JOIN` are handled appropriately.
-
-4. **Broadcasting**:
-
-   - Messages are broadcasted to other parts of the application using `TWITCH_BROADCAST`.
-
-5. **Text-to-Speech**:
-   - Messages not starting with the bot command prefix are sent to the TTS queue for speech synthesis.
-
-## Configuration
-
-The module uses two main configuration structures:
-
-- `TwitchConfig`: Stores Twitch connection details.
-- `BotSpeechConfig`: Manages TTS-related settings.
-
-Both configurations implement the `PersistentConfig` trait, allowing them to be loaded and saved persistently.
-
-## Error Handling
-
-The module uses the `anyhow` crate for error handling. Errors are logged and propagated as needed.
-
-## Example Usage
-
-To start the Twitch client:
+The extracted data becomes:
 
 ```rust
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    twitch_client::start().await
+TwitchChatMessage {
+    sender,
+    payload,
+    message_id,
 }
 ```
 
-## Notes
+The message is then:
 
-- The bot uses `tokio-tungstenite` for WebSocket communication.
-- The maximum message line length is defined by `TWITCH_MAX_MSG_LINE_LENGTH`.
-- The bot's nickname and channel are dynamically updated based on server responses.
+- broadcast through `TWITCH_BROADCAST` for command handling
+- converted to a TTS message and pushed into `TTS_QUEUE`
 
-## Future Improvements
+Messages sent by the bot itself are ignored to avoid feedback loops.
 
-- Add support for additional Twitch IRC commands.
-- Improve error handling and reconnection logic.
-- Enhance TTS functionality with more voice options.
+## Replies
+
+Replies use:
+
+```rust
+tw_api::send_chat_message(...)
+```
+
+`TwitchChatMessage::reply(...)` sends a threaded reply using the original Twitch `message_id` when available.
+
+## Configuration
+
+The Twitch client uses:
+
+- `.config/TwitchToken.toml`
+- `.config/TwitchScopesConfig.toml`
+- `.config/StreamerChannel.toml`
+
+It uses the shared `.config` directory and `PersistentConfig` TOML files.
+
+`TwitchScopesConfig.toml` contains the OAuth scopes requested during authorization. The default file is generated from the scopes compiled into the application.
+
+Example:
+
+```toml
+scopes = [
+  "channel:moderate",
+  "channel:bot",
+  "user:bot",
+  "user:edit:broadcast",
+  "user:read:email",
+  "user:read:emotes",
+  "user:read:follows",
+  "user:read:subscriptions",
+  "user:read:chat",
+  "user:write:chat",
+  "user:manage:whispers",
+]
+```
