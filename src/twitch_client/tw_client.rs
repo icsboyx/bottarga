@@ -13,7 +13,7 @@ use crate::{CONFIG_DIR, common::PersistentConfig};
 use eyre::{Context, ContextCompat, Result, bail};
 use futures::StreamExt;
 use std::time::Duration;
-use tokio::time::timeout;
+use tokio::time::sleep;
 use tokio_tungstenite::tungstenite::Message;
 
 static TW_WS_URL: &str = "wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds=30";
@@ -90,36 +90,53 @@ pub async fn start() -> Result<()> {
 
     let (web_socket, _response) = tokio_tungstenite::connect_async(TW_WS_URL).await?;
     let (_tx, mut rx) = web_socket.split();
-    let mut keepalive_timeout =
-        Duration::from_secs((30 * TW_KEEPALIVE_MISSES_BEFORE_RECONNECT) + TW_KEEPALIVE_GRACE_SECONDS);
+    let mut keepalive_timeout = Duration::from_secs(30 + TW_KEEPALIVE_GRACE_SECONDS);
+    let mut missed_keepalives = 0;
 
     loop {
-        let msg = timeout(keepalive_timeout, rx.next())
-            .await
-            .map_err(|_| eyre::eyre!("No Twitch WebSocket message received for {:?}", keepalive_timeout))?
-            .ok_or_else(|| eyre::eyre!("Twitch WebSocket stream ended"))??;
+        tokio::select! {
+            msg = rx.next() => {
+                missed_keepalives = 0;
+                let msg = msg.ok_or_else(|| eyre::eyre!("Twitch WebSocket stream ended"))??;
 
-        match msg {
-            Message::Text(data) => {
-                let msg = serde_json::from_slice::<WebSocketMessage>(&data.as_bytes()).context(here!())?;
+                match msg {
+                    Message::Text(data) => {
+                        let msg = serde_json::from_slice::<WebSocketMessage>(&data.as_bytes()).context(here!())?;
 
-                match msg.metadata.message_type {
-                    MessageType::SessionWelcome => {
-                        keepalive_timeout = manage_session_welcome(msg).await?;
+                        match msg.metadata.message_type {
+                            MessageType::SessionWelcome => {
+                                keepalive_timeout = manage_session_welcome(msg).await?;
+                            }
+                            MessageType::SessionKeepAlive => manage_session_keepalive(msg).await?,
+                            MessageType::Notification => manage_notification(msg).await?,
+                            MessageType::SessionReconnect => manage_session_reconnect(msg).await?,
+                            MessageType::Revocation => manage_revocation(msg).await?,
+                        }
                     }
-                    MessageType::SessionKeepAlive => manage_session_keepalive(msg).await?,
-                    MessageType::Notification => manage_notification(msg).await?,
-                    MessageType::SessionReconnect => manage_session_reconnect(msg).await?,
-                    MessageType::Revocation => manage_revocation(msg).await?,
+                    Message::Ping(data) => {
+                        log!("Received ping message: ({})", String::from_utf8_lossy(&data));
+                    }
+                    Message::Close(data) => {
+                        return Err(eyre::eyre!("Received close message: {:#?}", data));
+                    }
+                    _ => {}
                 }
             }
-            Message::Ping(data) => {
-                log!("Received ping message: ({})", String::from_utf8_lossy(&data));
+            _ = sleep(keepalive_timeout) => {
+                missed_keepalives += 1;
+                log_warning!(
+                    "Missed Twitch WebSocket keep-alive {}/{} after {:?}",
+                    missed_keepalives,
+                    TW_KEEPALIVE_MISSES_BEFORE_RECONNECT,
+                    keepalive_timeout
+                );
+                if missed_keepalives >= TW_KEEPALIVE_MISSES_BEFORE_RECONNECT {
+                    return Err(eyre::eyre!(
+                        "Missed {} consecutive Twitch WebSocket keepalives. Restarting Twitch client task.",
+                        missed_keepalives
+                    ));
+                }
             }
-            Message::Close(data) => {
-                return Err(eyre::eyre!("Received close message: {:#?}", data));
-            }
-            _ => {}
         }
     }
 }
@@ -132,8 +149,7 @@ pub async fn manage_session_welcome(msg: WebSocketMessage) -> Result<Duration> {
     tw_event_sub::sub_channel_chat_message(&streamer_id, session_id).await?;
     tw_event_sub::sub_user_whisper_message(&streamer_id, session_id).await?;
     Ok(Duration::from_secs(
-        (session.keepalive_timeout_seconds.unwrap_or(30) * TW_KEEPALIVE_MISSES_BEFORE_RECONNECT)
-            + TW_KEEPALIVE_GRACE_SECONDS,
+        session.keepalive_timeout_seconds.unwrap_or(30) + TW_KEEPALIVE_GRACE_SECONDS,
     ))
 }
 
