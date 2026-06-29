@@ -33,11 +33,6 @@ impl BotTaskStatus {
     pub async fn get_stats(&self) -> BotTaskStatus {
         self.clone()
     }
-
-    pub fn is_alive(&self) -> Result<()> {
-        let _ = self.is_alive;
-        Ok(())
-    }
 }
 
 impl std::fmt::Display for BotTaskStatus {
@@ -127,8 +122,15 @@ impl TaskManager {
                     } else {
                         log_debug!("STARTING {}", format!("{:?}", &task));
                     }
-                    let _ = task.run().await;
-                    task.task_status.write().await.restart_status += 1;
+                    task.task_status.write().await.is_alive = true;
+                    if let Err(e) = task.run().await {
+                        log_error!("Task {} stopped with error: {:#}", task.name, e);
+                    }
+                    {
+                        let mut status = task.task_status.write().await;
+                        status.is_alive = false;
+                        status.restart_status += 1;
+                    }
                 }
             })
             .await

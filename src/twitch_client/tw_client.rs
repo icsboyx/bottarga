@@ -12,9 +12,13 @@ use crate::{CONFIG_DIR, common::PersistentConfig};
 
 use eyre::{Context, ContextCompat, Result, bail};
 use futures::StreamExt;
+use std::time::Duration;
+use tokio::time::timeout;
 use tokio_tungstenite::tungstenite::Message;
 
 static TW_WS_URL: &str = "wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds=30";
+static TW_KEEPALIVE_MISSES_BEFORE_RECONNECT: u64 = 5;
+static TW_KEEPALIVE_GRACE_SECONDS: u64 = 10;
 
 pub static TW_BROADCASTER_CHANNEL: LazyLock<ArcRwLock<StreamerChannel>> =
     LazyLock::new(|| ArcRwLock::new(StreamerChannel::default()));
@@ -86,51 +90,51 @@ pub async fn start() -> Result<()> {
 
     let (web_socket, _response) = tokio_tungstenite::connect_async(TW_WS_URL).await?;
     let (_tx, mut rx) = web_socket.split();
+    let mut keepalive_timeout =
+        Duration::from_secs((30 * TW_KEEPALIVE_MISSES_BEFORE_RECONNECT) + TW_KEEPALIVE_GRACE_SECONDS);
 
     loop {
-        tokio::select! {
-                 Some(msg) = rx.next() => {
-                     match msg {
-                        Ok(msg)=> {
-                            match msg {
-                                Message::Text(data)=> {
-                                    let msg = serde_json::from_slice::<WebSocketMessage>(&data.as_bytes()).context(here!())?;
+        let msg = timeout(keepalive_timeout, rx.next())
+            .await
+            .map_err(|_| eyre::eyre!("No Twitch WebSocket message received for {:?}", keepalive_timeout))?
+            .ok_or_else(|| eyre::eyre!("Twitch WebSocket stream ended"))??;
 
-                                     match msg.metadata.message_type {
-                                         MessageType::SessionWelcome => manage_session_welcome(msg).await?,
-                                         MessageType::SessionKeepAlive => manage_session_keepalive(msg).await?,
-                                         MessageType::Notification => manage_notification(msg).await?,
-                                         MessageType::SessionReconnect => manage_session_reconnect(msg).await?,
-                                         MessageType::Revocation => manage_revocation(msg).await?,
-                                }
-                                }
+        match msg {
+            Message::Text(data) => {
+                let msg = serde_json::from_slice::<WebSocketMessage>(&data.as_bytes()).context(here!())?;
 
-                                Message::Ping(data) =>{
-                                    log!("Received ping message: ({})", String::from_utf8_lossy(&data));
-                                }
-
-                                Message::Close(data) => {
-                                    return Err(eyre::eyre!("Received close message: {:#?}", data)); // Exit the loop to close the WebSocket connection
-                                }
-                                _ => {}
-                            }
-                        }
-                        Err(e) => {
-                            return Err(eyre::eyre!("Error receiving WebSocket message: {}", e)); // Exit the loop to close the WebSocket connection
-                     }
-            }}
+                match msg.metadata.message_type {
+                    MessageType::SessionWelcome => {
+                        keepalive_timeout = manage_session_welcome(msg).await?;
+                    }
+                    MessageType::SessionKeepAlive => manage_session_keepalive(msg).await?,
+                    MessageType::Notification => manage_notification(msg).await?,
+                    MessageType::SessionReconnect => manage_session_reconnect(msg).await?,
+                    MessageType::Revocation => manage_revocation(msg).await?,
+                }
+            }
+            Message::Ping(data) => {
+                log!("Received ping message: ({})", String::from_utf8_lossy(&data));
+            }
+            Message::Close(data) => {
+                return Err(eyre::eyre!("Received close message: {:#?}", data));
+            }
+            _ => {}
         }
-        // Ok(())
     }
 }
 
-pub async fn manage_session_welcome(msg: WebSocketMessage) -> Result<()> {
+pub async fn manage_session_welcome(msg: WebSocketMessage) -> Result<Duration> {
     let streamer_id = TW_BROADCASTER_CHANNEL.get_clone().await.id;
-    let session_id = msg.payload.session.as_ref().context(here!()).unwrap().id.as_str();
+    let session = msg.payload.session.as_ref().context(here!())?;
+    let session_id = session.id.as_str();
     log!("Handling session welcome message, id {}", session_id);
     tw_event_sub::sub_channel_chat_message(&streamer_id, session_id).await?;
     tw_event_sub::sub_user_whisper_message(&streamer_id, session_id).await?;
-    Ok(())
+    Ok(Duration::from_secs(
+        (session.keepalive_timeout_seconds.unwrap_or(30) * TW_KEEPALIVE_MISSES_BEFORE_RECONNECT)
+            + TW_KEEPALIVE_GRACE_SECONDS,
+    ))
 }
 
 pub async fn manage_session_keepalive(msg: WebSocketMessage) -> Result<()> {
@@ -195,8 +199,16 @@ pub async fn manage_notification(msg: WebSocketMessage) -> Result<()> {
 }
 
 pub async fn manage_session_reconnect(msg: WebSocketMessage) -> Result<()> {
-    log!("Handling session reconnect message: {:#?}", msg);
-    Ok(())
+    let reconnect_url = msg
+        .payload
+        .session
+        .as_ref()
+        .and_then(|session| session.reconnect_url.as_deref())
+        .unwrap_or("missing reconnect_url");
+    Err(eyre::eyre!(
+        "Twitch requested WebSocket reconnect to {}. Restarting Twitch client task.",
+        reconnect_url
+    ))
 }
 
 pub async fn manage_revocation(msg: WebSocketMessage) -> Result<()> {
