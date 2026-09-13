@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-09-13
+
+### Added
+- GitHub Actions release workflow for Linux and Windows binaries.
+- README release instructions for publishing tagged builds.
+
+### Changed
+- Bumped package version to `0.3.0`.
+- Cleaned up Clippy warnings so strict lint checks pass.
+- Refreshed package description.
+
 ## [0.1.1] - 2026-01-09
 
 ### Added

@@ -64,6 +64,25 @@ On first run, Bottarga prompts for:
 
 The generated runtime configuration is stored under `.config/`.
 
+## GitHub Release Builds
+
+This repository includes a GitHub Actions workflow that builds release binaries for Linux and Windows.
+
+To publish a new release, tag a clean commit and push the tag:
+
+```bash
+git status
+git tag v0.3.0
+git push origin v0.3.0
+```
+
+GitHub Actions will create a GitHub Release and upload:
+
+- `bottarga-linux-x86_64.tar.gz`
+- `bottarga-windows-x86_64.zip`
+
+You can also start the workflow manually from the GitHub Actions tab with `workflow_dispatch`.
+
 ## Twitch Scopes
 
 Bottarga requests the scopes configured in `.config/TwitchScopesConfig.toml`. Like the other runtime configuration files, this file is generated automatically when missing. It is mentioned separately because changing it changes the OAuth permissions requested from Twitch.

@@ -36,7 +36,7 @@ pub use chrono;
 /// # Examples
 ///
 /// ```ignore
-/// use botox::here;
+/// use bottarga::here;
 ///
 /// let location = here!();
 /// assert!(location.starts_with("[ "));
@@ -44,7 +44,7 @@ pub use chrono;
 /// ```
 ///
 /// ```ignore
-/// use botox::here;
+/// use bottarga::here;
 ///
 /// let message = here!("value = {}", 42);
 /// assert!(message.contains("value = 42"));
@@ -73,7 +73,7 @@ macro_rules! here_v2 {
 /// # Examples
 ///
 /// ```ignore
-/// use botox::now;
+/// use bottarga::now;
 ///
 /// let value = now!();
 /// assert!(!value.is_empty());
@@ -92,7 +92,7 @@ macro_rules! now_v2 {
 /// # Examples
 ///
 /// ```ignore
-/// use botox::now_utc;
+/// use bottarga::now_utc;
 ///
 /// let value = now_utc!();
 /// assert!(!value.is_empty());
@@ -116,7 +116,7 @@ macro_rules! now_utc {
 /// # Examples
 ///
 /// ```ignore
-/// use botox::timestamp;
+/// use bottarga::timestamp;
 ///
 /// let seconds = timestamp!();
 /// let millis = timestamp!(millis);
@@ -165,7 +165,7 @@ macro_rules! timestamp {
 /// # Examples
 ///
 /// ```ignore
-/// use botox::timestamp_utc;
+/// use bottarga::timestamp_utc;
 ///
 /// let seconds = timestamp_utc!();
 /// let millis = timestamp_utc!(millis);
