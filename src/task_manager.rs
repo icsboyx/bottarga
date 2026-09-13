@@ -9,7 +9,7 @@ use futures::stream::StreamExt;
 use futures::{pin_mut, stream};
 use tokio::sync::RwLock;
 
-pub static TASKS_MANAGER: LazyLock<TaskManager> = LazyLock::new(|| TaskManager::default());
+pub static TASKS_MANAGER: LazyLock<TaskManager> = LazyLock::new(TaskManager::default);
 static TASK_MONITOR_TIME: u64 = 600;
 
 // type BotTaskType = dyn Fn() -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + Sync>>;
@@ -90,7 +90,7 @@ impl Default for TaskManager {
 
 impl std::fmt::Display for TaskManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", &self.tasks)
+        write!(f, "{:?}", self.tasks)
     }
 }
 

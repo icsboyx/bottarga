@@ -12,7 +12,7 @@ use crate::twitch_client::tw_oauth_token::TW_TOKEN;
 
 pub static BOT_COMMAND_PREFIX: &str = "!";
 
-pub static BOT_COMMANDS: LazyLock<BotCommands> = LazyLock::new(|| BotCommands::default());
+pub static BOT_COMMANDS: LazyLock<BotCommands> = LazyLock::new(BotCommands::default);
 
 pub type BotCommandType =
     Arc<dyn Fn(TwitchChatMessage) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Sync + Send>> + Sync + Send>;
@@ -76,9 +76,9 @@ pub async fn bot_cmd_list_all_commands(message: TwitchChatMessage) -> Result<()>
         .commands
         .read()
         .await
-        .iter()
-        .map(|(trigger, _)| format!("{}{}", BOT_COMMAND_PREFIX, trigger))
-        .collect::<Vec<_>>()
+        .keys()
+        .map(|trigger| format!("{}{}", BOT_COMMAND_PREFIX, trigger))
+        .collect::<Vec<String>>()
         .join(", ");
 
     let ret_val = format!("Available commands: {}", triggers);

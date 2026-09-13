@@ -70,8 +70,7 @@ impl Default for ExternalBotCommands {
 
 impl ExternalBotCommands {
     pub fn init() -> Self {
-        let ret_val = block_on(ExternalBotCommands::load(CONFIG_DIR));
-        ret_val
+        block_on(ExternalBotCommands::load(CONFIG_DIR))
     }
 
     pub async fn reg_ext_bot_cmd(&self) -> Result<()> {
@@ -137,7 +136,7 @@ async fn handle_command(chat_message: TwitchChatMessage, command: ExternalBotCom
         } else {
             format!(
                 "Hey @{}, you need to provide an argument for {}{} command",
-                &chat_message.sender, BOT_COMMAND_PREFIX, &command.activation_pattern
+                chat_message.sender, BOT_COMMAND_PREFIX, command.activation_pattern
             )
         }
     } else {

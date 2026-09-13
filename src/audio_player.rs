@@ -26,8 +26,8 @@ use crate::bot_commands::BOT_COMMANDS;
 use crate::common::{MSGQueue, PersistentConfig};
 use crate::twitch_client::tw_client::TwitchChatMessage;
 
-pub static TTS_AUDIO_QUEUE: LazyLock<MSGQueue<Vec<u8>>> = LazyLock::new(|| MSGQueue::new());
-pub static TTS_AUDIO_CONTROL: LazyLock<AudioPlayControl> = LazyLock::new(|| AudioPlayControl::new());
+pub static TTS_AUDIO_QUEUE: LazyLock<MSGQueue<Vec<u8>>> = LazyLock::new(MSGQueue::new);
+pub static TTS_AUDIO_CONTROL: LazyLock<AudioPlayControl> = LazyLock::new(AudioPlayControl::default);
 pub static AUDIO_CONTROL: LazyLock<AudioControl> = LazyLock::new(|| AudioControl::init(CONFIG_DIR));
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,27 +55,22 @@ impl AudioControl {
 
 impl PersistentConfig for AudioControl {}
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum PlayerCommands {
     Play,
     Stop,
+    #[default]
     Ready,
     Busy,
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct AudioPlayControl {
     status: Arc<RwLock<PlayerCommands>>,
     notify: Arc<tokio::sync::Notify>,
 }
 
 impl AudioPlayControl {
-    pub fn new() -> Self {
-        Self {
-            status: Arc::new(RwLock::new(PlayerCommands::Ready)),
-            notify: Arc::new(tokio::sync::Notify::new()),
-        }
-    }
-
     pub async fn set_status_play(&self) {
         *self.status.write().await = PlayerCommands::Play;
         self.notify.notify_one();
@@ -101,8 +96,7 @@ impl AudioPlayControl {
 
     pub async fn get_event(&self) -> PlayerCommands {
         self.notify.notified().await;
-        let event = self.status.read().await.clone();
-        event
+        self.status.read().await.clone()
     }
 
     pub async fn get_status(&self) -> PlayerCommands {

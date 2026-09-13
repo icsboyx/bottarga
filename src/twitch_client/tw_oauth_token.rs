@@ -20,7 +20,7 @@ use reqwest::Url;
 
 use crate::{CONFIG_DIR, common::PersistentConfig, twitch_client::tw_api};
 
-pub static TW_TOKEN: LazyLock<TwitchTokenWrapper> = LazyLock::new(|| TwitchTokenWrapper::default());
+pub static TW_TOKEN: LazyLock<TwitchTokenWrapper> = LazyLock::new(TwitchTokenWrapper::default);
 
 static TW_CLIENT_ID: &str = "wpokl9bx114xuajjziwsoxlo787lq2";
 static TW_FORCE_VERIFY: bool = false;

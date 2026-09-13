@@ -17,8 +17,8 @@ use crate::twitch_client::tw_client::TwitchChatMessage;
 use crate::twitch_client::tw_oauth_token::TW_TOKEN;
 use crate::users::{USER_DB, USER_DEFAULT_VOICE_CONFIG};
 
-pub static TTS_VOCE_BD: LazyLock<VoiceDB> = LazyLock::new(|| VoiceDB::default());
-pub static TTS_QUEUE: LazyLock<MSGQueue<TTSMassage>> = LazyLock::new(|| MSGQueue::new());
+pub static TTS_VOCE_BD: LazyLock<VoiceDB> = LazyLock::new(VoiceDB::default);
+pub static TTS_QUEUE: LazyLock<MSGQueue<TTSMassage>> = LazyLock::new(MSGQueue::new);
 static TRANSFORM_CHARS: &[(char, &str)] = &[('&', "and"), ('%', "percent")];
 
 pub async fn start() -> Result<()> {
@@ -78,20 +78,17 @@ impl VoiceDB {
         let voice_list = self
             .voice_list
             .iter()
-            .cloned()
-            .filter(|v| {
+            .filter(|&v| {
                 let v_text = format! {"{:?}", v};
                 filter
                     .iter()
                     .all(|f| v_text.to_lowercase().contains(f.to_lowercase().as_str()))
             })
-            .collect::<Vec<_>>();
+            .cloned()
+            .collect::<Vec<Voice>>();
 
         if voice_list.is_empty() {
-            log_debug!(
-                "No voices found for filter: {:?}, no filter is applied",
-                filter.as_ref()
-            );
+            log_debug!("No voices found for filter: {:?}, no filter is applied", filter);
             return self.clone();
         }
         Self { voice_list }

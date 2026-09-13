@@ -101,7 +101,7 @@ pub async fn start() -> Result<()> {
 
                 match msg {
                     Message::Text(data) => {
-                        let msg = serde_json::from_slice::<WebSocketMessage>(&data.as_bytes()).context(here!())?;
+                        let msg = serde_json::from_slice::<WebSocketMessage>(data.as_bytes()).context(here!())?;
 
                         match msg.metadata.message_type {
                             MessageType::SessionWelcome => {

@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
+use std::env::current_dir;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
 use eyre::Result;
@@ -16,13 +17,14 @@ pub(crate) trait PersistentConfig {
         Self: Default + Serialize + for<'de> Deserialize<'de>,
     {
         let file_name = std::any::type_name::<Self>().split("::").last().unwrap().to_owned() + ".toml";
-        let file_path = if config_dir.is_some() {
-            PathBuf::from(std::env::current_dir().unwrap())
-                .join(config_dir.unwrap())
-                .join(&file_name)
-        } else {
-            PathBuf::from(std::env::current_dir().unwrap()).join(&file_name)
-        };
+
+        let mut file_path = current_dir().unwrap();
+
+        if let Some(config_dir) = config_dir {
+            file_path.push(config_dir);
+        }
+
+        file_path.push(&file_name);
 
         match self.check_file_path(&file_path).await {
             Ok(_) => log!("{} Config path checked successfully", &file_name),
@@ -48,19 +50,20 @@ pub(crate) trait PersistentConfig {
         }
     }
 
-    async fn check_file_path(&self, file_path: &PathBuf) -> Result<()> {
-        if let Some(parent) = file_path.parent() {
-            if !metadata(parent).await.is_ok() {
-                log!("Parent directory does not exist, creating: {}", parent.display());
-                match create_dir_all(parent).await {
-                    Ok(_) => log!("Parent directory created successfully"),
-                    Err(e) => {
-                        log_error!("Failed to create parent directory: {}", e);
-                        return Err(e.into());
-                    }
+    async fn check_file_path(&self, file_path: &Path) -> Result<()> {
+        if let Some(parent) = file_path.parent()
+            && !metadata(parent).await.is_ok()
+        {
+            log!("Parent directory does not exist, creating: {}", parent.display());
+            match create_dir_all(parent).await {
+                Ok(_) => log!("Parent directory created successfully"),
+                Err(e) => {
+                    log_error!("Failed to create parent directory: {}", e);
+                    return Err(e.into());
                 }
             }
         }
+
         Ok(())
     }
 
@@ -69,13 +72,13 @@ pub(crate) trait PersistentConfig {
         Self: Default + Serialize + for<'de> Deserialize<'de>,
     {
         let file_name = std::any::type_name::<Self>().split("::").last().unwrap().to_owned() + ".toml";
-        let file_path = if config_dir.is_some() {
-            PathBuf::from(std::env::current_dir().unwrap())
-                .join(config_dir.unwrap())
-                .join(&file_name)
-        } else {
-            PathBuf::from(std::env::current_dir().unwrap()).join(&file_name)
-        };
+        let mut file_path = current_dir().unwrap();
+
+        if let Some(config_dir) = config_dir {
+            file_path.push(config_dir);
+        }
+
+        file_path.push(&file_name);
 
         match fs::read_to_string(&file_path).await {
             Ok(content) => {
@@ -136,7 +139,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MSGQueue<T>
 where
     T: Sync + Send + Clone + Debug + 'static,
@@ -181,5 +184,9 @@ where
 
     pub async fn len(&self) -> usize {
         self.queue.read().await.len()
+    }
+
+    pub async fn is_empty(&self) -> bool {
+        self.queue.read().await.is_empty()
     }
 }

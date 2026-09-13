@@ -18,7 +18,7 @@ macro_rules! err_log {
         std::eprintln!(
             "[ {} ] {} {}",
             $crate::timestamp!(millis),
-            if cfg!(debug_assertions){crate::here!()} else {format!("[ {:<20} ]", module_path!())},
+            if cfg!(debug_assertions){$crate::here!()} else {format!("[ {:<20} ]", module_path!())},
             format!($($arg)*)
         );
     }};
