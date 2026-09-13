@@ -72,8 +72,8 @@ To publish a new release, tag a clean commit and push the tag:
 
 ```bash
 git status
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 GitHub Actions will create a GitHub Release and upload:

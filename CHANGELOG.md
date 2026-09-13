@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-09-13
+
+### Changed
+- Refreshed Rust dependencies to current compatible versions.
+- Clarified the release line after the migration from the old IRC chat path to Twitch EventSub WebSocket.
+
+### Release Notes
+- Bottarga's main branch now represents the WebSocket-based Twitch chat implementation. The project connects through Twitch EventSub WebSocket, receives chat events, replies through Helix, and keeps the release build pipeline ready for packaged Linux and Windows binaries.
+
 ## [0.3.0] - 2026-09-13
 
 ### Added

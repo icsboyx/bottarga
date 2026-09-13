@@ -1,6 +1,6 @@
 [package]
 name = "bottarga"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "Bottarga is a simple text-to-speech bot for Twitch chat. It reads chat messages aloud, interacts with Twitch Chat, and runs predefined or configurable commands."
 license-file = "LICENSE"
@@ -8,9 +8,9 @@ repository = "https://github.com/icsboyx/bottarga"
 
 
 [dependencies]
-colored = { version = "3.0.0" }
-futures = "0.3.31"
-tokio = { version = "1.43.0", features = [
+colored = { version = "3.1.1" }
+futures = "0.3.34"
+tokio = { version = "1.53.1", features = [
   "rt-multi-thread",
   "macros",
   "tokio-macros",
@@ -23,23 +23,23 @@ tokio-tungstenite = { version = "0.26.2", features = [
   "native-tls",
   "tokio-native-tls",
 ] }
-serde = { version = "1.0.218", features = ["derive"] }
-toml = "0.8.20"
-tokio-stream = "0.1.17"
-serde_json = "1.0.140"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "0.8.23"
+tokio-stream = "0.1.19"
+serde_json = "1.0.151"
 json_to_table = "0.10.0"
 msedge-tts = { git = "https://github.com/icsboyx/msedge-tts.git" }
 # msedge-tts = "0.2.4"
-rand = "0.9.0"
+rand = "0.9.5"
 rodio = "0.20.1"
-regex = "1.11.1"
-kira = "0.10.4"
-curl = "0.4.47"
-eyre = "0.6.12"
+regex = "1.13.1"
+kira = "0.10.8"
+curl = "0.4.50"
+eyre = "0.6.14"
 chrono = "0.4.45"
-reqwest = "0.13.4"
+reqwest = "0.13.5"
 
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 psimple = { package = "libpulse-simple-binding", version = "2.29.0" }
-pulse = { package = "libpulse-binding", version = "2.29.0" }
+pulse = { package = "libpulse-binding", version = "2.30.1" }
