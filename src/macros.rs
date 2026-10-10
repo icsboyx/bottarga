@@ -1,5 +1,4 @@
 #[macro_export]
-#[macro_export]
 macro_rules! now {
     () => {{
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
