@@ -1,41 +1,12 @@
 #[macro_export]
+#[macro_export]
 macro_rules! now {
     () => {{
-        // Import necessary items
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        // Get the current time since the Unix epoch
-        let now = SystemTime::now();
-        let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
-
-        // Convert duration to seconds
-        let seconds = duration_since_epoch.as_secs();
-
-        // Constants for time conversion
-        const DAYS_IN_YEAR: u64 = 365;
-        const SECONDS_IN_MINUTE: u64 = 60;
-        const SECONDS_IN_HOUR: u64 = 3600;
-        const SECONDS_IN_DAY: u64 = 86400;
-
-        // Convert seconds to a rough approximation of date components
-        let years_since_epoch = seconds / (SECONDS_IN_DAY * DAYS_IN_YEAR);
-        let year = 1970 + years_since_epoch as i32; // Start from Unix epoch (1970)
-
-        let days_since_epoch = (seconds / SECONDS_IN_DAY) % DAYS_IN_YEAR;
-        let month = 1 + (days_since_epoch / 30); // Approximate month (not accounting for leap years)
-        let day = 1 + (days_since_epoch % 30); // Approximate day
-
-        // Convert seconds into hours, minutes, and seconds
-        let hours = (seconds / SECONDS_IN_HOUR) % 24; // Get hours in a 24-hour format
-        let minutes = (seconds % SECONDS_IN_HOUR) / SECONDS_IN_MINUTE;
-        let seconds = seconds % SECONDS_IN_MINUTE;
-
-        format!(
-            "{}-{:02}-{:02} {:02}:{:02}:{:02}",
-            year, month, day, hours, minutes, seconds
-        )
+        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        format!("{}", now)
     }};
 }
+
 #[macro_export]
 macro_rules! here {
     () => {
