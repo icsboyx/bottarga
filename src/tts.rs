@@ -4,7 +4,7 @@ use std::sync::{Arc, LazyLock};
 use eyre::Result;
 use msedge_tts::tts::SpeechConfig;
 use msedge_tts::voice::{Voice, get_voices_list};
-use rand::Rng;
+use rand::RngExt;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -88,7 +88,10 @@ impl VoiceDB {
             .collect::<Vec<Voice>>();
 
         if voice_list.is_empty() {
-            log_debug!("No voices found for filter: {:?}, no filter is applied", filter);
+            log_debug!(
+                "No voices found for filter: {:?}, no filter is applied",
+                filter
+            );
             return self.clone();
         }
         Self { voice_list }
@@ -127,7 +130,9 @@ pub async fn text_to_speech(message: TTSMassage) -> Result<()> {
         .collect::<String>();
 
     let mut tts = msedge_tts::tts::client::connect_async().await?;
-    let audio = tts.synthesize(text.as_ref(), &message.speech_config).await?;
+    let audio = tts
+        .synthesize(text.as_ref(), &message.speech_config)
+        .await?;
     if audio.audio_bytes.is_empty() {
         return Ok(());
     }
@@ -139,15 +144,27 @@ pub async fn text_to_speech(message: TTSMassage) -> Result<()> {
 
 fn remove_url_in_text(text: impl AsRef<str>) -> String {
     // let url_regex = Regex::new(r"[a-zA-Z]+://[^\s]+").unwrap();
-    let url_regex = Regex::new(r"(?:[a-zA-Z]+://|www\.|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)[^\s]+").unwrap();
-    url_regex.replace_all(text.as_ref(), ", URL removed,").to_string()
+    let url_regex =
+        Regex::new(r"(?:[a-zA-Z]+://|www\.|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)[^\s]+").unwrap();
+    url_regex
+        .replace_all(text.as_ref(), ", URL removed,")
+        .to_string()
 }
 
 pub async fn voice_msg(payload: &impl AsRef<str>, nick: &impl AsRef<str>) -> TTSMassage {
     let speech_config = if nick.as_ref() != TW_TOKEN.login().await {
-        USER_DB.write().await.get_user(nick).await.get_speech_config().clone()
+        USER_DB
+            .write()
+            .await
+            .get_user(nick)
+            .await
+            .get_speech_config()
+            .clone()
     } else {
-        TTS_VOCE_BD.filter_voices_by_text(&["it-IT", "multi"]).random().into()
+        TTS_VOCE_BD
+            .filter_voices_by_text(&["it-IT", "multi"])
+            .random()
+            .into()
     };
     TTSMassage {
         speech_config,
@@ -156,7 +173,10 @@ pub async fn voice_msg(payload: &impl AsRef<str>, nick: &impl AsRef<str>) -> TTS
 }
 
 pub async fn bot_cmd_tts_list_all_locales(message: TwitchChatMessage) -> Result<()> {
-    let ret_val = format!("Available locales: {}", TTS_VOCE_BD.list_all_locales().await.join(", "));
+    let ret_val = format!(
+        "Available locales: {}",
+        TTS_VOCE_BD.list_all_locales().await.join(", ")
+    );
     message.reply(ret_val).await?;
     Ok(())
 }
@@ -167,7 +187,10 @@ pub async fn bot_cmd_tts_reset_voice(message: TwitchChatMessage) -> Result<()> {
     USER_DB
         .write()
         .await
-        .update_user(&nick, (TTS_VOCE_BD.filter_voices_by_text(filter).random()).into())
+        .update_user(
+            &nick,
+            (TTS_VOCE_BD.filter_voices_by_text(filter).random()).into(),
+        )
         .await;
     let payload = format!(
         "@{}, your voice config has been updated to {}",

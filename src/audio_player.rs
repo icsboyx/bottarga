@@ -141,9 +141,9 @@ pub async fn start() -> Result<()> {
 #[cfg(target_os = "linux")]
 pub async fn play_on_sink(audio: Vec<u8>, sink_name: impl AsRef<str>) -> Result<()> {
     let cursor = Cursor::new(audio);
-    let source = Decoder::new(cursor)?.convert_samples::<f32>();
-    let sample_rate = source.sample_rate();
-    let channels = source.channels() as u8;
+    let source = Decoder::new(cursor)?;
+    let sample_rate = source.sample_rate().get();
+    let channels = source.channels().get() as u8;
 
     log_trace!("Sample rate: {}, channels {}.", sample_rate, channels);
 
