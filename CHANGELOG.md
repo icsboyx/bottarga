@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] - 2026-11-05
+
+### Fixed
+- Restored text-to-speech synthesis, which failed with `403 Forbidden` after Microsoft made the `Sec-MS-GEC` v2 token mandatory in October 2026. The fix comes from `msedge-tts` 0.4.1 ([changelog](https://github.com/hs-CN/msedge-tts/blob/master/CHANGELOG.md)).
+
+### Changed
+- Replaced the forked `msedge-tts` git dependency with the upstream crates.io release `0.4.1`, using the `tokio-runtime` feature.
+- Updated the TTS client connection to the `tokio_runtime` API.
+- Updated Rust dependencies, including `tokio-tungstenite` 0.30, `toml` 1.2, `rodio` 0.23, `kira` 0.12 and `rand` 0.10, and adapted audio playback to the new `rodio` API.
+- Simplified time formatting in the `now!` macro using `chrono`.
+
 ## [0.3.1] - 2026-09-13
 
 ### Changed
