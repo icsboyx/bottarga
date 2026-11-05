@@ -129,7 +129,7 @@ pub async fn text_to_speech(message: TTSMassage) -> Result<()> {
         })
         .collect::<String>();
 
-    let mut tts = msedge_tts::tts::client::connect_async().await?;
+    let mut tts = msedge_tts::tts::client::tokio_runtime::connect_async().await?;
     let audio = tts
         .synthesize(text.as_ref(), &message.speech_config)
         .await?;

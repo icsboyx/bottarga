@@ -28,8 +28,7 @@ toml = "1.2.0"
 tokio-stream = "0.1.19"
 serde_json = "1.0.154"
 json_to_table = "0.14.0"
-msedge-tts = { git = "https://github.com/icsboyx/msedge-tts.git" }
-# msedge-tts = "0.2.4"
+msedge-tts = { version = "0.4.1", features = ["tokio-runtime"] }
 rand = "0.10.3"
 rodio = "0.23.0"
 regex = "1.13.1"
