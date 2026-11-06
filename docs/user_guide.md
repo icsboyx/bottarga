@@ -39,7 +39,7 @@ The first run creates the `.config` directory and asks for Twitch setup informat
 
 Bottarga prints a Twitch authorization URL.
 
-Open that URL in a browser, authorize the app, and copy the full redirected URL. Paste it back into the terminal when Bottarga asks for it.
+Open that URL in a browser and authorize the app. The browser redirects to a URL like `http://localhost:65432/#access_token=<TOKEN>&scope=...`. Copy only the `<TOKEN>` value and paste it into the terminal when Bottarga asks for it.
 
 Bottarga stores the validated token in:
 

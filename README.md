@@ -59,7 +59,7 @@ cargo run --release
 
 On first run, Bottarga prompts for:
 
-- a Twitch OAuth redirect URL after authorization
+- the Twitch access token from the redirect URL after authorization
 - the Twitch channel name to join
 
 The generated runtime configuration is stored under `.config/`.
@@ -72,8 +72,8 @@ To publish a new release, tag a clean commit and push the tag:
 
 ```bash
 git status
-git tag v0.3.2
-git push origin v0.3.2
+git tag v0.3.3
+git push origin v0.3.3
 ```
 
 GitHub Actions will create a GitHub Release and upload:
@@ -87,7 +87,7 @@ You can also start the workflow manually from the GitHub Actions tab with `workf
 
 Bottarga requests the scopes configured in `.config/TwitchScopesConfig.toml`. Like the other runtime configuration files, this file is generated automatically when missing. It is mentioned separately because changing it changes the OAuth permissions requested from Twitch.
 
-The token is validated on startup. If the stored token is missing, invalid, or does not contain all configured scopes, the bot prints a Twitch authorization URL and asks for the redirected URL.
+The token is validated on startup. If the stored token is missing, invalid, or does not contain all configured scopes, the bot prints a Twitch authorization URL and asks for the `access_token` value from the redirected URL.
 
 ## Configuration
 

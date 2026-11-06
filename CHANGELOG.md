@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.3.3] - 2026-11-06
+
+### Fixed
+- The Twitch authorization prompt now asks for the `access_token` value from the redirected URL, which is what Bottarga validates. Pasting the full URL as previously instructed could not work.
+
+### Changed
+- Updated the README and documentation to describe the token step.
+- Installed `libdbus-1-dev` in the Linux release build, required by the updated audio stack.
+
 ## [0.3.2] - 2026-11-05
 
 ### Fixed
