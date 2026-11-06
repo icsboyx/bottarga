@@ -265,7 +265,12 @@ impl TwitchTokenWrapper {
     }
 
     pub async fn client_id(&self) -> String {
-        self.twitch_token.read().await.token_identity.client_id.clone()
+        self.twitch_token
+            .read()
+            .await
+            .token_identity
+            .client_id
+            .clone()
     }
 
     pub async fn scopes(&self) -> Vec<String> {
@@ -277,7 +282,12 @@ impl TwitchTokenWrapper {
     }
 
     pub async fn user_id(&self) -> String {
-        self.twitch_token.read().await.token_identity.user_id.clone()
+        self.twitch_token
+            .read()
+            .await
+            .token_identity
+            .user_id
+            .clone()
     }
 
     pub async fn auth_headers(&self) -> HeaderMap {
@@ -286,7 +296,10 @@ impl TwitchTokenWrapper {
             header::AUTHORIZATION,
             HeaderValue::from_str(&format!("Bearer {}", self.auth_code().await)).unwrap(),
         );
-        headers.insert("Client-id", HeaderValue::from_str(&self.client_id().await).unwrap());
+        headers.insert(
+            "Client-id",
+            HeaderValue::from_str(&self.client_id().await).unwrap(),
+        );
         headers
     }
 }
@@ -325,7 +338,9 @@ pub async fn boot_token_config() -> Result<()> {
 
 pub async fn get_auth_code() -> Result<String> {
     let mut user_input = String::new();
-    print!("Paste the URL you were redirected to after authorization: ");
+    print!(
+        "Paste here a TOKEN from url after authorization:  <http://localhost:65432/#access_token=<TOKEN>&scope=chan>"
+    );
     stdout().flush()?;
     std::io::stdin().read_line(&mut user_input)?;
     Ok(user_input.trim().to_string())
@@ -335,7 +350,7 @@ pub async fn token_initialize() -> Result<TwitchToken> {
     log!("Initializing Twitch token...");
     gen_auth_code_url().await;
     let auth_code = get_auth_code().await?;
-    log!("Auth Code received");
+
     let twitch_token = tw_api::validate_auth_code(auth_code).await?;
     log!("Token validated successfully");
     Ok(twitch_token)
@@ -349,7 +364,10 @@ async fn validate_configured_scopes(token: &TwitchToken) -> Result<()> {
         .collect::<Vec<_>>();
 
     if !missing_scopes.is_empty() {
-        bail!("Token is missing configured Twitch scopes: {:?}", missing_scopes);
+        bail!(
+            "Token is missing configured Twitch scopes: {:?}",
+            missing_scopes
+        );
     }
 
     Ok(())
